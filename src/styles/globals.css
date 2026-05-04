@@ -1,0 +1,108 @@
+@import "tailwindcss";
+
+/* ─── Tell Tailwind v4 where to scan for class names ───────────────────────
+   Without @source, the v4 scanner won't find TSX/TS files and NO utility
+   classes get generated (flex, grid, items-center, etc. all missing).
+   ──────────────────────────────────────────────────────────────────────── */
+@source "../**/*.{tsx,ts,jsx,js}";
+@source "../../index.html";
+
+/* ─── Tailwind v4 CSS-first theme tokens ───────────────────────────────────
+   In v4 utilities like `bg-background` are generated from @theme vars,
+   not from tailwind.config.ts. We define HSL channel vars in :root and
+   reference them here via hsl().
+   ──────────────────────────────────────────────────────────────────────── */
+@theme {
+  /* Colors */
+  --color-background:        hsl(var(--bg-h) var(--bg-s) var(--bg-l));
+  --color-foreground:        hsl(var(--fg-h) var(--fg-s) var(--fg-l));
+  --color-muted:             hsl(220 20% 9%);
+  --color-muted-foreground:  hsl(220 10% 65%);
+  --color-border:            hsl(220 20% 12%);
+  --color-primary:           hsl(155 45% 45%);
+  --color-primary-foreground: hsl(0 0% 98%);
+  --color-accent:            hsl(155 45% 45%);
+  --color-accent-foreground: hsl(0 0% 98%);
+  --color-destructive:            hsl(0 84% 60%);
+  --color-destructive-foreground: hsl(0 0% 98%);
+  --color-ring:              hsl(155 45% 45%);
+  --color-card:              hsl(220 20% 8%);
+  --color-card-foreground:   hsl(0 0% 98%);
+
+  /* Typography */
+  --font-sans:    "Plus Jakarta Sans", system-ui, sans-serif;
+  --font-display: "Outfit", system-ui, sans-serif;
+  --font-mono:    "JetBrains Mono", ui-monospace, monospace;
+
+  /* Border radius */
+  --radius-none: 0px;
+  --radius-sm:   2px;
+  --radius-md:   4px;
+  --radius-lg:   8px;
+
+  /* Animations */
+  --animate-fade-in: fadeIn 0.2s ease-out;
+  --animate-slide-up: slideUp 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ─── Base layer: CSS custom properties + body defaults ─────────────────── */
+@layer base {
+  :root {
+    --bg-h: 220; --bg-s: 20%; --bg-l: 6%;
+    --fg-h: 0;   --fg-s: 0%;  --fg-l: 98%;
+  }
+
+  *, *::before, *::after {
+    border-color: hsl(220 20% 12%);
+  }
+
+  body {
+    background-color: hsl(220 20% 6%);
+    color: hsl(0 0% 98%);
+    font-family: "Plus Jakarta Sans", system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: "Outfit", system-ui, sans-serif;
+    font-weight: 500;
+    letter-spacing: -0.02em;
+  }
+}
+
+/* ─── Utility helpers ───────────────────────────────────────────────────── */
+@layer utilities {
+  .noise-overlay {
+    position: relative;
+  }
+  .noise-overlay::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background-image: url('/noise.png');
+    opacity: 0.03;
+    z-index: 50;
+  }
+
+  /* Shorthand semantic surface helpers */
+  .surface {
+    background-color: hsl(220 20% 8%);
+    border: 1px solid hsl(220 20% 12%);
+  }
+  .surface-elevated {
+    background-color: hsl(220 20% 10%);
+    border: 1px solid hsl(220 20% 14%);
+  }
+}
