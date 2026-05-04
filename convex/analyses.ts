@@ -1,8 +1,5 @@
-import { action, internalMutation, mutation, query } from "./_generated/server";
+import { internalMutation, internalQuery, mutation, query } from "./_generated/server";
 import { v } from "convex/values";
-import { internal } from "./_generated/api";
-import { callOpenRouter } from "./lib/openrouter";
-import { validateAiResponse } from "./lib/validators";
 
 export const getMyAnalyses = query({
   args: {},
@@ -82,82 +79,35 @@ export const createAnalysisRecord = mutation({
   },
 });
 
-export const runAnalysis = action({
+export const getAnalysisInternal = internalQuery({
+  args: { analysisId: v.id("analyses") },
+  handler: async (ctx, args) => {
+    return await ctx.db.get(args.analysisId);
+  },
+});
+
+export const getCachedResult = internalQuery({
+  args: { contentHash: v.string() },
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query("analysisCache")
+      .withIndex("by_hash", (q) => q.eq("contentHash", args.contentHash))
+      .first();
+  },
+});
+
+export const setCachedResult = internalMutation({
   args: {
-    analysisId: v.id("analyses"),
-    resumeText: v.optional(v.string()),
-    portfolioUrl: v.optional(v.string()),
-    jobDescription: v.optional(v.string()),
-    type: v.union(
-      v.literal("resume_review"),
-      v.literal("job_match"),
-      v.literal("portfolio_audit"),
-    ),
+    contentHash: v.string(),
+    result: v.any(),
+    type: v.string(),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Unauthorized");
-
-    const rateLimitRes = await ctx.runMutation(
-      internal.lib.rateLimiter.consumeRateLimit,
-      {
-        userId: identity.subject,
-        resource: "analysis",
-        maxCount: 10,
-        windowMs: 3600000,
-      },
-    );
-
-    if (!rateLimitRes.success) {
-      await ctx.runMutation(internal.analyses.updateAnalysisStatus, {
-        analysisId: args.analysisId,
-        status: "failed",
-        errorMessage: "Rate limit exceeded. Try again later.",
-      });
-      throw new Error("Rate limit exceeded.");
-    }
-
-    try {
-      const systemPrompt = `You are an expert career coach with 15 years experience.
-Return ONLY valid JSON in a markdown code block.
-The JSON MUST follow this schema exactly:
-{
-  "score": number (0-100),
-  "summary": "string summary of analysis",
-  "strengths": ["array of strings"],
-  "weaknesses": ["array of strings"],
-  "suggestions": ["array of strings"]
-  ${args.type === "job_match" ? ', "missingSkills": ["array of strings"]' : ""}
-  ${args.type === "portfolio_audit" ? ', "improvedDescriptions": ["array of strings"]' : ""}
-}`;
-      let userPrompt = "";
-
-      if (args.type === "resume_review") {
-        userPrompt = `Analyze this resume:\n\n${args.resumeText?.slice(0, 8000) ?? "No resume text provided."}`;
-      } else if (args.type === "job_match") {
-        userPrompt = `Compare this resume against the job description.\n\nResume:\n${args.resumeText?.slice(0, 8000) ?? "Empty resume"}\n\nJob Description:\n${args.jobDescription?.slice(0, 4000) ?? "Empty job description"}`;
-      } else if (args.type === "portfolio_audit") {
-        userPrompt = `Audit this portfolio URL: ${args.portfolioUrl ?? "No URL provided"}`;
-      }
-
-      const rawResult = await callOpenRouter(systemPrompt, userPrompt);
-      const validatedResult = validateAiResponse(args.type, rawResult);
-
-      await ctx.runMutation(internal.analyses.updateAnalysisStatus, {
-        analysisId: args.analysisId,
-        status: "completed",
-        result: validatedResult,
-      });
-
-      return validatedResult;
-    } catch (err: unknown) {
-      console.error(err);
-      await ctx.runMutation(internal.analyses.updateAnalysisStatus, {
-        analysisId: args.analysisId,
-        status: "failed",
-        errorMessage: "AI Analysis failed.",
-      });
-      throw new Error("Analysis failed");
-    }
+    await ctx.db.insert("analysisCache", {
+      contentHash: args.contentHash,
+      result: args.result,
+      type: args.type,
+      createdAt: Date.now(),
+    });
   },
 });

@@ -5,13 +5,47 @@ import { PortfolioInput } from "../components/portfolio/PortfolioInput";
 import { PortfolioResults } from "../components/portfolio/PortfolioResults";
 import { Analysis } from "../types";
 import { toast } from "sonner";
+import { ErrorBoundary } from "../components/ui/ErrorBoundary";
+
+const fetchGitHubData = async (urlOrUsername: string) => {
+  const username = urlOrUsername.replace(/^(https?:\/\/)?(www\.)?github\.com\//, "").split("/")[0];
+  if (!username) throw new Error("Invalid GitHub URL or username");
+
+  const [userRes, reposRes] = await Promise.all([
+    fetch(`https://api.github.com/users/${username}`),
+    fetch(`https://api.github.com/users/${username}/repos?sort=updated&per_page=5`)
+  ]);
+
+  if (!userRes.ok) {
+    if (userRes.status === 403 || userRes.status === 429) {
+      throw new Error("GitHub API rate limit exceeded. Please try again later.");
+    }
+    throw new Error(`GitHub user ${username} not found`);
+  }
+
+  const user = await userRes.json();
+  const repos = reposRes.ok ? await reposRes.json() : [];
+
+  let summary = `GitHub Profile: ${user.login}\n`;
+  summary += `Name: ${user.name || 'N/A'}\n`;
+  summary += `Bio: ${user.bio || 'N/A'}\n`;
+  summary += `Public Repos: ${user.public_repos}\n`;
+  summary += `Followers: ${user.followers}\n\n`;
+  summary += `Recent Repositories:\n`;
+
+  for (const repo of repos) {
+    summary += `- ${repo.name}: ${repo.description || 'No description'} (Stars: ${repo.stargazers_count}, Language: ${repo.language})\n`;
+  }
+
+  return summary;
+};
 
 export function PortfolioAuditor() {
   const [isAuditing, setIsAuditing] = useState(false);
   const [analysis, setAnalysis] = useState<Analysis | null>(null);
 
   const createAnalysisRecord = useMutation(api.analyses.createAnalysisRecord);
-  const runAnalysis = useAction(api.analyses.runAnalysis);
+  const runAnalysis = useAction(api.analysisActions.runAnalysis);
 
   const handleAudit = async (urlOrUsername: string) => {
     // Accept either "username" or "https://github.com/username"
@@ -19,10 +53,13 @@ export function PortfolioAuditor() {
       ? urlOrUsername
       : `https://github.com/${urlOrUsername}`;
 
-    setIsAuditing(true);
-    setAnalysis(null);
+      setIsAuditing(true);
+      setAnalysis(null);
 
-    try {
+      try {
+        // 0. Fetch GitHub data
+        const githubSummary = await fetchGitHubData(urlOrUsername);
+
       // 1. Create a pending analysis record in Convex
       const analysisId = await createAnalysisRecord({
         type: "portfolio_audit",
@@ -34,9 +71,11 @@ export function PortfolioAuditor() {
         analysisId,
         type: "portfolio_audit",
         portfolioUrl,
+        resumeText: githubSummary,
       });
 
       if (!result) throw new Error("Empty result from AI");
+      if ((result as { error?: string }).error) throw new Error((result as { error?: string }).error);
 
       // 3. Build a local Analysis object to display results immediately
       setAnalysis({
@@ -81,7 +120,9 @@ export function PortfolioAuditor() {
       )}
 
       {!isAuditing && analysis && (
-        <PortfolioResults analysis={analysis} />
+        <ErrorBoundary fallback={<div className="p-4 text-destructive border rounded-md">Analysis returned empty data</div>}>
+          <PortfolioResults analysis={analysis} />
+        </ErrorBoundary>
       )}
       
       {!isAuditing && !analysis && (

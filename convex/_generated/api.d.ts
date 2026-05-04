@@ -9,11 +9,15 @@
  */
 
 import type * as analyses from "../analyses.js";
+import type * as analysis from "../analysis.js";
+import type * as analysisActions from "../analysisActions.js";
 import type * as auth from "../auth.js";
 import type * as compliance from "../compliance.js";
+import type * as extraction from "../extraction.js";
 import type * as guest from "../guest.js";
 import type * as jobs from "../jobs.js";
 import type * as lib_openrouter from "../lib/openrouter.js";
+import type * as lib_parser from "../lib/parser.js";
 import type * as lib_rateLimiter from "../lib/rateLimiter.js";
 import type * as lib_security from "../lib/security.js";
 import type * as lib_validators from "../lib/validators.js";
@@ -29,11 +33,15 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   analyses: typeof analyses;
+  analysis: typeof analysis;
+  analysisActions: typeof analysisActions;
   auth: typeof auth;
   compliance: typeof compliance;
+  extraction: typeof extraction;
   guest: typeof guest;
   jobs: typeof jobs;
   "lib/openrouter": typeof lib_openrouter;
+  "lib/parser": typeof lib_parser;
   "lib/rateLimiter": typeof lib_rateLimiter;
   "lib/security": typeof lib_security;
   "lib/validators": typeof lib_validators;

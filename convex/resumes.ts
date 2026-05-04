@@ -1,13 +1,10 @@
-import { mutation, query } from "./_generated/server";
+import { internalMutation, internalQuery, mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 
 export const getMyResumes = query({
   args: {},
   handler: async (ctx) => {
     const identity = await ctx.auth.getUserIdentity();
-    // Per RULE-S4: return null (not throw) for queries — reactive queries can
-    // fire before auth token is established; null signals "not ready yet" to
-    // the client without crashing the render tree.
     if (!identity) return null;
 
     return ctx.db
@@ -23,7 +20,7 @@ export const createResume = mutation({
     title: v.string(),
     fileStorageId: v.optional(v.id("_storage")),
     extractedText: v.optional(v.string()),
-    fileType: v.union(v.literal("pdf"), v.literal("txt"), v.literal("md")),
+    fileType: v.union(v.literal("pdf"), v.literal("txt"), v.literal("md"), v.literal("docx")),
     fileSize: v.number(),
   },
   handler: async (ctx, args) => {
@@ -71,5 +68,26 @@ export const generateUploadUrl = mutation({
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("Unauthorized");
     return await ctx.storage.generateUploadUrl();
+  },
+});
+
+export const getResumeInternal = internalQuery({
+  args: { resumeId: v.id("resumes") },
+  handler: async (ctx, args) => {
+    return await ctx.db.get(args.resumeId);
+  },
+});
+
+export const updateExtractedText = mutation({
+  args: { resumeId: v.id("resumes"), text: v.string() },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.resumeId, { extractedText: args.text });
+  },
+});
+
+export const updateExtractedTextInternal = internalMutation({
+  args: { resumeId: v.id("resumes"), text: v.string() },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.resumeId, { extractedText: args.text });
   },
 });

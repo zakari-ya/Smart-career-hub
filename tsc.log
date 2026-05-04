@@ -1,0 +1,9 @@
+convex/analysis.ts(14,14): error TS7022: 'analyzeResume' implicitly has type 'any' because it does not have a type annotation and is referenced directly or indirectly in its own initializer.
+convex/analysis.ts(20,3): error TS7023: 'handler' implicitly has return type 'any' because it does not have a return type annotation and is referenced directly or indirectly in one of its return expressions.
+convex/analysis.ts(33,11): error TS7022: 'cachedResult' implicitly has type 'any' because it does not have a type annotation and is referenced directly or indirectly in its own initializer.
+convex/lib/parser.ts(13,12): error TS18046: 'data' is of type 'unknown'.
+src/components/jobs/JobMatcherForm.tsx(72,32): error TS7006: Parameter 'resume' implicitly has an 'any' type.
+src/components/resume/ResumeList.tsx(38,21): error TS7006: Parameter 'resume' implicitly has an 'any' type.
+src/pages/JobMatcher.tsx(26,35): error TS7006: Parameter 'r' implicitly has an 'any' type.
+src/pages/ResumeScanner.tsx(41,35): error TS7006: Parameter 'r' implicitly has an 'any' type.
+src/pages/ResumeScanner.tsx(159,36): error TS7006: Parameter 'resume' implicitly has an 'any' type.

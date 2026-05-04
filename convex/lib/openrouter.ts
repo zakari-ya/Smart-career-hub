@@ -1,5 +1,5 @@
 
-const AI_MODEL = "openai/gpt-oss-120b:free";
+const AI_MODEL = "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free";
 
 export const callOpenRouter = async (systemPrompt: string, userPrompt: string) => {
   let retries = 3;
@@ -12,16 +12,18 @@ export const callOpenRouter = async (systemPrompt: string, userPrompt: string) =
           "Content-Type": "application/json",
           "HTTP-Referer": process.env.OPENROUTER_HTTP_REFERER || "https://smartcareerhub.com",
         },
-        body: JSON.stringify({
-          model: AI_MODEL,
-          messages: [
-            // Combined prompt for compatibility with models that don't support 'system' role
-            { role: "user", content: `${systemPrompt}\n\n${userPrompt}` },
-          ],
-          max_tokens: 2500,
-          temperature: 0.7,
-        }),
-      });
+          body: JSON.stringify({
+            model: AI_MODEL,
+            messages: [
+              { role: "system", content: systemPrompt },
+              { role: "user", content: userPrompt },
+            ],
+            max_tokens: 3000,
+            temperature: 0.2,
+            response_format: { type: "json_object" },
+          }),
+        },
+      );
 
       if (!response.ok) {
         const errorBody = await response.text();

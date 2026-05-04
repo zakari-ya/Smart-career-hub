@@ -22,7 +22,7 @@ export default defineSchema({
     title: v.string(),
     fileStorageId: v.optional(v.id("_storage")),
     extractedText: v.optional(v.string()),
-    fileType: v.union(v.literal("pdf"), v.literal("txt"), v.literal("md")),
+    fileType: v.union(v.literal("pdf"), v.literal("txt"), v.literal("md"), v.literal("docx")),
     fileSize: v.number(),
     isArchived: v.boolean(),
     createdAt: v.number(),
@@ -115,5 +115,12 @@ export default defineSchema({
     resource: v.string(),
     count: v.number(),
     windowStart: v.number(),
-  }).index("by_user_resource", ["userId", "resource"])
+  }).index("by_user_resource", ["userId", "resource"]),
+
+  analysisCache: defineTable({
+    contentHash: v.string(), // SHA-256 or similar hash of the input text
+    result: v.any(),
+    type: v.string(),
+    createdAt: v.number(),
+  }).index("by_hash", ["contentHash"]),
 });
