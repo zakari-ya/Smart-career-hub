@@ -3,7 +3,7 @@
 // fetch("https://openrouter.ai/api/v1/chat/completions", {
 //   method: "POST",
 //   headers: {
-//     "Authorization": `Bearer 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`,
+//     "Authorization": `Bearer `,
 //     "Content-Type": "application/json"
 //   },
 //   body: JSON.stringify({
