@@ -1,8 +1,5 @@
 import { useState } from "react";
-import { Github, ArrowRight } from "lucide-react";
-import { Button } from "../ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card";
-import { Input } from "../ui/input";
+import { ArrowRight, Loader2 } from "lucide-react";
 
 interface PortfolioInputProps {
   onSubmit: (url: string) => void;
@@ -20,37 +17,42 @@ export function PortfolioInput({ onSubmit, isLoading }: PortfolioInputProps) {
   };
 
   return (
-    <Card className="w-full">
-      <CardHeader>
-        <CardTitle className="flex items-center text-xl">
-          <Github className="mr-2 h-6 w-6" />
-          Audit GitHub Portfolio
-        </CardTitle>
-        <CardDescription>
-          Enter your GitHub username or portfolio URL to get an AI-powered review of your projects, READMEs, and code organization.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <form onSubmit={handleSubmit} className="flex space-x-2">
-          <div className="relative flex-1">
-            <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-              <span className="text-muted-foreground sm:text-sm">github.com/</span>
-            </div>
-            <Input
-              type="text"
-              placeholder="username"
-              className="pl-24"
-              value={url}
-              onChange={(e) => setUrl(e.target.value)}
-              disabled={isLoading}
-            />
-          </div>
-          <Button type="submit" disabled={!url.trim() || isLoading}>
-            {isLoading ? "Auditing..." : "Audit"}
-            {!isLoading && <ArrowRight className="ml-2 h-4 w-4" />}
-          </Button>
-        </form>
-      </CardContent>
-    </Card>
+    <form onSubmit={handleSubmit} className="relative group max-w-2xl mx-auto">
+      <div className="relative flex items-center">
+        <div className="absolute left-6 text-muted font-mono text-sm pointer-events-none select-none">
+          github.com/
+        </div>
+        <input
+          type="text"
+          placeholder="username"
+          value={url}
+          onChange={(e) => setUrl(e.target.value)}
+          disabled={isLoading}
+          className="w-full h-16 pl-32 pr-40 bg-surface border-2 border-border/50 rounded-full text-lg font-medium text-primary placeholder:text-muted/50 focus:outline-none focus:border-accent transition-all group-hover:border-border"
+        />
+        <div className="absolute right-2">
+          <button
+            type="submit"
+            disabled={!url.trim() || isLoading}
+            className="flex items-center gap-2 h-12 px-8 rounded-full bg-accent text-white font-medium text-sm transition-all hover:bg-accent/90 disabled:opacity-30 active:scale-[0.98]"
+          >
+            {isLoading ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Auditing
+              </>
+            ) : (
+              <>
+                Audit
+                <ArrowRight className="h-4 w-4" />
+              </>
+            )}
+          </button>
+        </div>
+      </div>
+      <p className="mt-4 text-xs text-muted font-normal">
+        Works with usernames or repository URLs. Private data is never stored.
+      </p>
+    </form>
   );
 }

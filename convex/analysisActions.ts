@@ -54,9 +54,12 @@ export const runAnalysis = action({
         const resumeId = analysisRecord?.resumeId;
 
         if (resumeId) {
-          const resume = await ctx.runQuery(internal.resumes.getResumeInternal, {
-            resumeId,
-          });
+          const resume = await ctx.runQuery(
+            internal.resumes.getResumeInternal,
+            {
+              resumeId,
+            },
+          );
           if (resume) {
             if (resume.extractedText) {
               analysisText = resume.extractedText;
@@ -103,7 +106,8 @@ export const runAnalysis = action({
       let userPrompt = "";
 
       if (args.type === "resume_review") {
-        systemPrompt = "You are a senior technical recruiter and resume strategist with 15 years of experience at top-tier companies. You have reviewed over 10,000 resumes. You are direct, honest, and constructive. You speak to the user in second person ('your resume', 'you should'). You never sugarcoat weaknesses. You never hallucinate content that is not in the provided text.";
+        systemPrompt =
+          "You are a senior technical recruiter and resume strategist with 15 years of experience at top-tier companies. You have reviewed over 10,000 resumes. You are direct, honest, and constructive. You speak to the user in second person ('your resume', 'you should'). You never sugarcoat weaknesses. You never hallucinate content that is not in the provided text.";
         userPrompt = `Analyze the following resume text and provide a detailed, honest review. Speak directly to the user as 'you'.
 
 --- EXTRACTED RESUME TEXT START ---
@@ -166,7 +170,8 @@ EXAMPLE OF HONEST SCORING:
 
 Now analyze the resume above and return ONLY the JSON.`;
       } else if (args.type === "job_match") {
-        systemPrompt = "You are a senior technical recruiter and career strategist. You specialize in matching candidates to job descriptions with brutal honesty. You speak directly to the user ('you', 'your skills'). You never inflate match scores to be nice. If the user is unqualified, you say so clearly and explain what they need to learn.";
+        systemPrompt =
+          "You are a senior technical recruiter and career strategist. You specialize in matching candidates to job descriptions with brutal honesty. You speak directly to the user ('you', 'your skills'). You never inflate match scores to be nice. If the user is unqualified, you say so clearly and explain what they need to learn.";
         userPrompt = `Compare the user's resume against the job description. Be honest about the match.
 
 --- USER RESUME TEXT START ---
@@ -218,7 +223,8 @@ EXAMPLE OF HONEST SCORING:
 Now analyze and return ONLY the JSON.`;
       } else if (args.type === "portfolio_audit") {
         // Fallback for portfolio audit
-        systemPrompt = "You are a senior technical recruiter and engineering manager. Audit this GitHub portfolio summary. Output ONLY valid JSON.";
+        systemPrompt =
+          "You are a senior technical recruiter and engineering manager. Audit this GitHub portfolio summary. Output ONLY valid JSON.";
         userPrompt = `Audit this GitHub portfolio summary:
 
 --- GITHUB PROFILE SUMMARY START ---
@@ -244,7 +250,8 @@ OUTPUT FORMAT — Return ONLY a valid JSON object. No markdown, no explanations 
       let parsedResult;
 
       try {
-        parsedResult = typeof rawResult === "string" ? JSON.parse(rawResult) : rawResult;
+        parsedResult =
+          typeof rawResult === "string" ? JSON.parse(rawResult) : rawResult;
       } catch (e) {
         console.error("Failed to parse AI response:", rawResult);
         await ctx.runMutation(internal.analyses.updateAnalysisStatus, {

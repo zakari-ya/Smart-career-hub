@@ -1,85 +1,64 @@
-import { FileText, Trash2, Activity } from "lucide-react";
+import { FileText, Trash2, ChevronRight } from "lucide-react";
 import { Resume } from "../../types";
-import { Button } from "../ui/button";
-import { Card } from "../ui/card";
-import { Badge } from "../ui/badge";
-import { useState } from "react";
-
 import { toast } from "sonner";
+import { Link } from "react-router-dom";
 
 interface ResumeCardProps {
   resume: Resume;
 }
 
 export function ResumeCard({ resume }: ResumeCardProps) {
-  const [isDeleting] = useState(false);
-  // Assuming we will have a deleteResume mutation in the future
-  // const deleteResume = useMutation(api.resumes.deleteResume);
 
   const formatDate = (timestamp: number) => {
     return new Intl.DateTimeFormat("en-US", {
       month: "short",
       day: "numeric",
-      year: "numeric",
     }).format(new Date(timestamp));
   };
 
   const formatSize = (bytes: number) => {
-    return (bytes / 1024 / 1024).toFixed(2) + " MB";
+    return (bytes / 1024).toFixed(0) + " KB";
   };
 
   const handleDelete = async () => {
-    // setIsDeleting(true);
-    // try {
-    //   await deleteResume({ id: resume._id });
-    //   toast.success("Resume deleted");
-    // } catch (e) {
-    //   toast.error("Failed to delete resume");
-    // } finally {
-    //   setIsDeleting(false);
-    // }
     toast.info("Delete functionality coming soon");
   };
 
   return (
-    <Card className="group relative overflow-hidden transition-all duration-300 hover:border-white/20 hover:bg-white/[0.04]">
-      <div className="flex items-start justify-between p-5">
-        <div className="flex items-start space-x-4">
-          <div className="flex h-10 w-10 items-center justify-center rounded-[2px] bg-white/5 border border-white/10 text-muted-foreground transition-colors group-hover:text-primary">
-            <FileText className="h-5 w-5" />
-          </div>
-          <div className="space-y-1">
-            <h3 className="font-display text-[16px] font-medium tracking-tight text-foreground/90">
-              {resume.title}
-            </h3>
-            <p className="text-sm text-muted-foreground">
-              {formatSize(resume.fileSize)} • Uploaded {formatDate(resume.createdAt)}
-            </p>
-            <div className="pt-2">
-              <Badge variant="secondary" className="uppercase text-[10px]">
-                {resume.fileType}
-              </Badge>
-            </div>
-          </div>
+    <div className="group relative flex flex-col gap-6 p-6 rounded-card bg-surface border border-border/30 transition-all hover:border-accent hover:-translate-y-0.5">
+      <div className="flex items-start justify-between">
+        <div className="flex h-12 w-12 items-center justify-center rounded-sm bg-background border border-border/50 text-accent">
+          <FileText className="h-6 w-6" strokeWidth={1.5} />
         </div>
-        
-        <div className="flex items-center space-x-2 opacity-0 transition-opacity group-hover:opacity-100">
-          <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary">
-            <Activity className="h-4 w-4" />
-            <span className="sr-only">Analyze</span>
-          </Button>
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            className="h-8 w-8 text-muted-foreground hover:text-destructive"
-            onClick={handleDelete}
-            disabled={isDeleting}
-          >
-            <Trash2 className="h-4 w-4" />
-            <span className="sr-only">Delete</span>
-          </Button>
+        <button 
+          onClick={handleDelete}
+          className="p-2 text-muted hover:text-error transition-colors"
+        >
+          <Trash2 className="h-4 w-4" strokeWidth={1.5} />
+        </button>
+      </div>
+
+      <div className="flex flex-col gap-1">
+        <h3 className="text-lg font-medium text-primary tracking-tight truncate">
+          {resume.title}
+        </h3>
+        <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-muted">
+          <span>{resume.fileType}</span>
+          <span className="h-1 w-1 rounded-full bg-border" />
+          <span>{formatSize(resume.fileSize)}</span>
+          <span className="h-1 w-1 rounded-full bg-border" />
+          <span>{formatDate(resume.createdAt)}</span>
         </div>
       </div>
-    </Card>
+
+      <div className="flex items-center justify-between pt-4 border-t border-border/20">
+        <Link
+          to="/resume-scanner"
+          className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-accent hover:gap-3 transition-all"
+        >
+          View Analysis <ChevronRight className="h-3 w-3" />
+        </Link>
+      </div>
+    </div>
   );
 }

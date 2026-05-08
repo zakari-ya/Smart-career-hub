@@ -2,42 +2,45 @@ import { useState } from "react";
 import { useAction, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { ResumeUploader } from "../components/resume/ResumeUploader";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
-import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
 import { AnalysisResults } from "../components/analysis/AnalysisResults";
 import { Analysis } from "../types";
-import { Button } from "../components/ui/button";
 import { toast } from "sonner";
-import { Sparkles, FileText, Loader2, AlertCircle, CheckCircle2, Info } from "lucide-react";
+import {
+  FileSearch,
+  FileText,
+  Loader2,
+  AlertCircle,
+  CheckCircle2,
+  Sparkles,
+  ChevronRight,
+  RotateCcw,
+  ArrowRight,
+} from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ErrorBoundary } from "../components/ui/ErrorBoundary";
+import { cn } from "../lib/utils";
+
+type Phase = "idle" | "extracting" | "extracted" | "analyzing" | "done";
 
 export function ResumeScanner() {
-  const [activeTab, setActiveTab] = useState("upload");
   const [selectedResumeId, setSelectedResumeId] = useState<string | null>(null);
-  
   const [extractedText, setExtractedText] = useState<string>("");
   const [analysis, setAnalysis] = useState<Analysis | null>(null);
-  const [phase, setPhase] = useState<"idle" | "extracting" | "extracted" | "analyzing" | "done">("idle");
+  const [phase, setPhase] = useState<Phase>("idle");
   const [error, setError] = useState<string>("");
 
   const resumes = useQuery(api.resumes.getMyResumes);
   const extractTextAction = useAction(api.extraction.extractText);
   const analyzeResumeAction = useAction(api.analysis.analyzeResume);
 
-  const calculateAccuracy = (text: string) => {
-    if (!text) return 0;
-    const commonKeywords = ["experience", "education", "skills", "projects", "contact"];
-    const found = commonKeywords.filter(k => text.toLowerCase().includes(k)).length;
-    return Math.min(Math.round((found / commonKeywords.length) * 100), 100);
-  };
+  const steps = ["Upload", "Extract", "Analyze", "Results"];
+  const currentStepIndex = phase === "idle" ? 0 : phase === "extracting" || phase === "extracted" ? 1 : phase === "analyzing" ? 2 : 3;
 
   const handleExtract = async () => {
     if (!selectedResumeId) {
       toast.error("Select a resume first.");
       return;
     }
-
     const resume = resumes?.find((r) => r._id === selectedResumeId);
     if (!resume) return;
 
@@ -51,21 +54,19 @@ export function ResumeScanner() {
         setPhase("extracted");
         return;
       }
-
       const result = await extractTextAction({
-        fileBase64: "", // Backend will handle retrieval via fileName/storage
+        fileBase64: "",
         fileName: resume.title,
         fileType: resume.fileType,
         ...(resume.fileStorageId ? { storageId: resume.fileStorageId } : {}),
       });
-
       if (result.success && result.extractedText) {
         setExtractedText(result.extractedText);
         setPhase("extracted");
       } else {
-        setError(result.error || "Extraction failed");
+        setError(result.error ?? "Extraction failed");
         setPhase("idle");
-        toast.error(result.error || "Extraction failed");
+        toast.error(result.error ?? "Extraction failed");
       }
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "An unexpected error occurred");
@@ -75,18 +76,14 @@ export function ResumeScanner() {
 
   const handleAnalyze = async () => {
     if (!extractedText) return;
-
     setPhase("analyzing");
     setError("");
 
     try {
-      const result = await analyzeResumeAction({
-        extractedText,
-        analysisType: "resume",
-      });
+      const result = await analyzeResumeAction({ extractedText, analysisType: "resume" });
 
       if (result.success && result.analysis) {
-        interface ResumeResult {
+        interface AIResult {
           overallATSScore?: number;
           honestAssessment?: string;
           verdictReason?: string;
@@ -94,8 +91,7 @@ export function ResumeScanner() {
           top3Actions?: string[];
           missingKeywords?: string[];
         }
-        const aiResult = result.analysis as ResumeResult;
-
+        const aiResult = result.analysis as AIResult;
         const mappedAnalysis = {
           _id: "temp",
           userId: "temp",
@@ -105,26 +101,25 @@ export function ResumeScanner() {
           type: "resume_review",
           aiModel: "gpt-4",
           result: {
-            score: aiResult.overallATSScore || 0,
-            summary: aiResult.honestAssessment || aiResult.verdictReason || "Analysis completed.",
-            strengths: Object.entries(aiResult.sections || {})
-              .filter(([, data]) => (data as { score: number }).score >= 70)
-              .map(([section, data]) => `${section}: ${(data as { feedback: string }).feedback}`),
-            weaknesses: Object.entries(aiResult.sections || {})
-              .filter(([, data]) => (data as { score: number }).score < 70)
-              .map(([section, data]) => `${section}: ${(data as { feedback: string }).feedback}`),
-            suggestions: aiResult.top3Actions || [],
-            missingSkills: aiResult.missingKeywords || []
-          }
+            score: aiResult.overallATSScore ?? 0,
+            summary: aiResult.honestAssessment ?? aiResult.verdictReason ?? "Analysis completed.",
+            strengths: Object.entries(aiResult.sections ?? {})
+              .filter(([, d]) => d.score >= 70)
+              .map(([s, d]) => `${s}: ${d.feedback}`),
+            weaknesses: Object.entries(aiResult.sections ?? {})
+              .filter(([, d]) => d.score < 70)
+              .map(([s, d]) => `${s}: ${d.feedback}`),
+            suggestions: aiResult.top3Actions ?? [],
+            missingSkills: aiResult.missingKeywords ?? [],
+          },
         } as unknown as Analysis;
         setAnalysis(mappedAnalysis);
         setPhase("done");
-        setActiveTab("results");
         toast.success("AI Analysis complete!");
       } else {
-        setError(result.error || "Analysis failed");
+        setError(result.error ?? "Analysis failed");
         setPhase("extracted");
-        toast.error(result.error || "Analysis failed");
+        toast.error(result.error ?? "Analysis failed");
       }
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "AI service error");
@@ -132,217 +127,252 @@ export function ResumeScanner() {
     }
   };
 
+  const handleReset = () => {
+    setPhase("idle");
+    setSelectedResumeId(null);
+    setExtractedText("");
+    setAnalysis(null);
+    setError("");
+  };
+
   return (
-    <div className="flex-1 space-y-6 p-8 pt-6 max-w-6xl mx-auto w-full relative">
-      {/* Noise Texture Overlay */}
-      <div className="absolute inset-0 pointer-events-none opacity-[0.03] bg-noise z-0" />
-      
-      <div className="flex flex-col space-y-2 relative z-10">
-        <h2 className="text-4xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-foreground to-foreground/70">
+    <div className="mx-auto max-w-[1200px] w-full py-12 px-6 animate-fade-in">
+      {/* ── Page Header ─────────────────────────────────────────────── */}
+      <div className="mb-16 border-b border-border pb-10">
+        <h1 className="text-5xl font-semibold text-primary tracking-tight leading-tight mb-4">
           Resume Scanner
-        </h2>
-        <p className="text-muted-foreground text-lg max-w-2xl">
+        </h1>
+        <p className="text-lg text-secondary font-normal max-w-2xl">
           Upload your resume for a professional-grade ATS audit. 
-          Uncover hidden gaps and get actionable feedback in seconds.
+          Uncover hidden gaps and get actionable feedback in under 30 seconds.
         </p>
       </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6 relative z-10">
-        <TabsList className="grid w-full md:w-[400px] grid-cols-2 bg-muted/50 border">
-          <TabsTrigger value="upload" className="data-[state=active]:bg-background data-[state=active]:shadow-sm">Upload & Manage</TabsTrigger>
-          <TabsTrigger value="results" disabled={!analysis} className="data-[state=active]:bg-background data-[state=active]:shadow-sm">Latest Analysis</TabsTrigger>
-        </TabsList>
+      {/* ── Progress Bar (Minimalist) ─────────────────────────────────── */}
+      <div className="mb-12 flex items-center gap-4">
+        {steps.map((step, i) => (
+          <div key={step} className="flex items-center gap-4 flex-1 last:flex-initial">
+            <div className="flex flex-col gap-1">
+              <span className={cn(
+                "text-[10px] font-bold uppercase tracking-widest",
+                i <= currentStepIndex ? "text-accent" : "text-muted"
+              )}>
+                {step}
+              </span>
+              <div className={cn(
+                "h-1 rounded-full transition-all duration-500",
+                i <= currentStepIndex ? "bg-accent" : "bg-border"
+              )} />
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* ── Main Content Area ────────────────────────────────────────── */}
+      <AnimatePresence mode="wait">
         
-        <TabsContent value="upload" className="space-y-6 outline-none">
-          <div className="grid gap-6 lg:grid-cols-12">
+        {/* IDLE / UPLOAD */}
+        {phase === "idle" && (
+          <motion.div
+            key="idle"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+            className="grid grid-cols-1 gap-12 lg:grid-cols-12"
+          >
             <div className="lg:col-span-4">
               <ResumeUploader />
             </div>
-            
-            <div className="lg:col-span-8 space-y-6">
-              <Card className="border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
-                <CardHeader className="bg-muted/30 border-b">
-                  <CardTitle className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Select Resume</CardTitle>
-                </CardHeader>
-                <CardContent className="pt-6 space-y-4">
-                  <div className="grid gap-3">
-                    {resumes?.map((resume) => (
-                      <motion.div
-                        key={resume._id}
-                        whileHover={{ scale: 1.01 }}
-                        whileTap={{ scale: 0.99 }}
-                        onClick={() => {
-                          setSelectedResumeId(resume._id);
-                          setPhase("idle");
-                          setExtractedText("");
-                        }}
-                        className={`group flex items-center justify-between rounded-lg border-2 p-4 cursor-pointer transition-all ${
-                          selectedResumeId === resume._id
-                            ? "border-primary bg-primary/[0.02]"
-                            : "border-transparent bg-muted/20 hover:bg-muted/40"
-                        }`}
-                      >
-                        <div className="flex items-center gap-4">
-                          <div className={`p-2 rounded-md ${selectedResumeId === resume._id ? "bg-primary/10 text-primary" : "bg-background text-muted-foreground"}`}>
-                            <FileText className="h-5 w-5" />
-                          </div>
-                          <div>
-                            <p className="font-semibold text-sm">{resume.title}</p>
-                            <p className="text-xs text-muted-foreground mt-0.5">
-                              {resume.fileType.toUpperCase()} · {(resume.fileSize / 1024).toFixed(1)} KB
-                            </p>
-                          </div>
+
+            <div className="lg:col-span-8 flex flex-col gap-6">
+              <div className="flex items-center justify-between mb-2">
+                <h2 className="text-2xl font-medium text-primary tracking-tight">Select Resume</h2>
+                <p className="text-sm text-muted font-mono">{resumes?.length ?? 0} saved</p>
+              </div>
+
+              {!resumes ? (
+                <div className="space-y-3">
+                  {[1, 2, 3].map((n) => (
+                    <div key={n} className="h-16 w-full rounded-md bg-surface animate-pulse" />
+                  ))}
+                </div>
+              ) : resumes.length === 0 ? (
+                <div className="flex flex-col items-center justify-center gap-4 py-20 rounded-card border border-dashed border-border bg-surface/30">
+                  <FileSearch className="h-8 w-8 text-muted" strokeWidth={1} />
+                  <p className="text-sm text-secondary">No resumes uploaded yet.</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 gap-3">
+                  {resumes.map((resume) => (
+                    <button
+                      key={resume._id}
+                      onClick={() => setSelectedResumeId(resume._id)}
+                      className={cn(
+                        "group flex items-center justify-between rounded-md border p-4 text-left transition-all",
+                        selectedResumeId === resume._id
+                          ? "border-accent bg-surface"
+                          : "border-border bg-transparent hover:bg-surface/50"
+                      )}
+                    >
+                      <div className="flex items-center gap-4">
+                        <div className={cn(
+                          "flex h-10 w-10 items-center justify-center rounded-sm transition-colors",
+                          selectedResumeId === resume._id ? "bg-accent text-white" : "bg-surface text-muted"
+                        )}>
+                          <FileText className="h-5 w-5" strokeWidth={1.5} />
                         </div>
-                        {selectedResumeId === resume._id && (
-                          <div className="bg-primary text-primary-foreground px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-tight">
-                            Selected
-                          </div>
-                        )}
-                      </motion.div>
-                    ))}
-                  </div>
-
-                  <Button
-                    className="w-full mt-2 h-11"
-                    onClick={handleExtract}
-                    disabled={!selectedResumeId || phase === "extracting" || phase === "analyzing"}
-                  >
-                    {phase === "extracting" ? (
-                      <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Processing...</>
-                    ) : (
-                      "Extract Content"
-                    )}
-                  </Button>
-                </CardContent>
-              </Card>
-
-              <AnimatePresence mode="wait">
-                {phase === "extracted" && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, scale: 0.95 }}
-                    className="space-y-4"
-                  >
-                    <Card className="border-primary/20 shadow-lg relative overflow-hidden">
-                      <div className="absolute top-0 right-0 p-4">
-                        <div className="flex items-center gap-2 px-3 py-1 bg-green-500/10 border border-green-500/20 rounded-full text-green-600 dark:text-green-400">
-                          <CheckCircle2 className="h-3 w-3" />
-                          <span className="text-[10px] font-bold uppercase">Ready</span>
+                        <div>
+                          <p className="font-medium text-primary">{resume.title}</p>
+                          <p className="text-xs text-secondary mt-0.5">{resume.fileType.toUpperCase()} · Updated {new Date(resume._creationTime).toLocaleDateString()}</p>
                         </div>
                       </div>
-                      <CardHeader>
-                        <CardTitle className="text-lg flex items-center gap-2">
-                          <Sparkles className="h-5 w-5 text-primary" />
-                          Content Verified
-                        </CardTitle>
-                        <div className="flex items-center gap-4 mt-2">
-                          <div className="flex flex-col gap-1">
-                            <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest">Accuracy</span>
-                            <div className="flex items-center gap-2">
-                              <div className="w-24 h-1.5 bg-muted rounded-full overflow-hidden">
-                                <motion.div 
-                                  initial={{ width: 0 }}
-                                  animate={{ width: `${calculateAccuracy(extractedText)}%` }}
-                                  className="h-full bg-primary"
-                                />
-                              </div>
-                              <span className="text-xs font-bold">{calculateAccuracy(extractedText)}%</span>
-                            </div>
-                          </div>
-                        </div>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="relative group">
-                          <div className="bg-slate-950 text-slate-300 border border-slate-800 rounded-lg p-5 max-h-72 overflow-y-auto font-mono text-[11px] leading-relaxed selection:bg-primary selection:text-primary-foreground">
-                            {extractedText}
-                          </div>
-                          <div className="absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-slate-950 to-transparent pointer-events-none rounded-b-lg opacity-50" />
-                        </div>
-                        
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
-                          <Button variant="outline" onClick={() => setPhase("idle")}>
-                            Reselect File
-                          </Button>
-                          <Button 
-                            onClick={handleAnalyze} 
-                            className="bg-primary hover:bg-primary/90 text-white font-bold"
-                          >
-                            <Sparkles className="mr-2 h-4 w-4" />
-                            Run AI Deep Dive
-                          </Button>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </motion.div>
-                )}
+                      <ChevronRight className={cn(
+                        "h-4 w-4 transition-transform",
+                        selectedResumeId === resume._id ? "text-accent translate-x-1" : "text-border"
+                      )} />
+                    </button>
+                  ))}
 
-                {phase === "analyzing" && (
-                  <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    className="flex flex-col items-center justify-center p-12 border rounded-xl bg-muted/5 border-dashed"
+                  <button
+                    onClick={() => void handleExtract()}
+                    disabled={!selectedResumeId}
+                    className="mt-6 inline-flex h-12 items-center justify-center gap-2 rounded-full bg-accent px-8 text-sm font-medium text-white transition-all hover:bg-accent/90 disabled:opacity-30 active:scale-[0.98]"
                   >
-                    <div className="relative">
-                      <div className="h-16 w-16 rounded-full border-2 border-primary/20 border-t-primary animate-spin" />
-                      <Sparkles className="absolute inset-0 m-auto h-6 w-6 text-primary animate-pulse" />
-                    </div>
-                    <h3 className="mt-6 text-xl font-bold tracking-tight">Recruiter-AI at Work</h3>
-                    <p className="mt-2 text-muted-foreground text-center max-w-sm">
-                      Our "Senior Recruiter" model is auditing your resume for ATS compatibility and skill impact.
-                    </p>
-                    <div className="mt-8 w-full max-w-xs space-y-3">
-                      <div className="h-2 bg-muted rounded-full overflow-hidden">
-                        <motion.div 
-                          className="h-full bg-primary"
-                          animate={{ 
-                            x: ["-100%", "100%"] 
-                          }}
-                          transition={{ 
-                            repeat: Infinity, 
-                            duration: 1.5,
-                            ease: "linear" 
-                          }}
-                        />
-                      </div>
-                      <p className="text-[10px] uppercase font-bold text-center text-muted-foreground tracking-widest">
-                        Performing Keyword Gap Analysis...
-                      </p>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-
-              {error && (
-                <motion.div 
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  className="flex items-center gap-3 p-4 text-sm text-destructive bg-destructive/5 rounded-lg border border-destructive/20"
-                >
-                  <AlertCircle className="h-5 w-5 flex-shrink-0" />
-                  <p className="font-medium">{error}</p>
-                </motion.div>
+                    Extract Content
+                    <ArrowRight className="h-4 w-4" />
+                  </button>
+                </div>
               )}
             </div>
-          </div>
-        </TabsContent>
-        
-        <TabsContent value="results" className="outline-none">
-          {analysis ? (
-            <ErrorBoundary fallback={<div className="p-4 text-destructive border rounded-md">Analysis returned empty data</div>}>
-              <div className="animate-in fade-in zoom-in-95 duration-500">
-                <AnalysisResults analysis={analysis} />
+          </motion.div>
+        )}
+
+        {/* EXTRACTING / ANALYZING LOADING */}
+        {(phase === "extracting" || phase === "analyzing") && (
+          <motion.div
+            key="loading"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="flex flex-col items-center justify-center gap-8 py-32 text-center"
+          >
+            <div className="relative">
+              <div className="h-24 w-24 rounded-full border border-border flex items-center justify-center">
+                <Loader2 className="h-10 w-10 animate-spin text-accent" strokeWidth={1} />
               </div>
-            </ErrorBoundary>
-          ) : (
-            <div className="flex flex-col items-center justify-center h-[400px] border-2 border-dashed rounded-xl bg-muted/5">
-              <Info className="h-8 w-8 text-muted-foreground/30 mb-4" />
-              <p className="text-muted-foreground font-medium">No results to display yet.</p>
-              <Button variant="link" onClick={() => setActiveTab("upload")}>Return to Upload</Button>
+              <Sparkles className="absolute -top-2 -right-2 h-8 w-8 text-accent animate-pulse" strokeWidth={1} />
             </div>
-          )}
-        </TabsContent>
-      </Tabs>
+            <div>
+              <h2 className="text-3xl font-medium text-primary tracking-tight">
+                {phase === "extracting" ? "Parsing document..." : "Recruiter-AI at work..."}
+              </h2>
+              <p className="mt-2 text-secondary font-normal max-w-sm mx-auto">
+                {phase === "extracting" 
+                  ? "We're extracting text from your resume using deep document parsing."
+                  : "We're analyzing keywords, structure, and impact scores."}
+              </p>
+            </div>
+          </motion.div>
+        )}
+
+        {/* EXTRACTED PREVIEW */}
+        {phase === "extracted" && (
+          <motion.div
+            key="extracted"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+            className="grid grid-cols-1 gap-12 lg:grid-cols-12"
+          >
+            <div className="lg:col-span-7 flex flex-col gap-6">
+              <div className="flex items-center justify-between">
+                <h2 className="text-2xl font-medium text-primary tracking-tight">Extracted Content</h2>
+                <div className="px-3 py-1 rounded-full bg-success/10 text-[10px] font-bold text-success uppercase tracking-wider">
+                  Verified
+                </div>
+              </div>
+              <div className="rounded-card bg-surface p-8 overflow-hidden border border-border/30">
+                <pre className="max-h-[500px] overflow-y-auto text-sm leading-relaxed text-secondary whitespace-pre-wrap font-mono scrollbar-hide">
+                  {extractedText}
+                </pre>
+              </div>
+            </div>
+
+            <div className="lg:col-span-5 flex flex-col gap-8">
+              <div className="p-8 rounded-card border border-border bg-background flex flex-col gap-6">
+                <h3 className="text-xl font-medium text-primary">Next: AI Deep Dive</h3>
+                <p className="text-sm text-secondary leading-relaxed">
+                  The content has been parsed successfully. Our AI will now evaluate your resume 
+                  against industry-standard ATS benchmarks and modern recruitment patterns.
+                </p>
+                <div className="space-y-3">
+                  <div className="flex items-center gap-3 text-sm text-secondary">
+                    <CheckCircle2 className="h-4 w-4 text-success" />
+                    Keyword Gap Analysis
+                  </div>
+                  <div className="flex items-center gap-3 text-sm text-secondary">
+                    <CheckCircle2 className="h-4 w-4 text-success" />
+                    Action Verb Audit
+                  </div>
+                  <div className="flex items-center gap-3 text-sm text-secondary">
+                    <CheckCircle2 className="h-4 w-4 text-success" />
+                    Layout Compatibility
+                  </div>
+                </div>
+                <button
+                  onClick={() => void handleAnalyze()}
+                  className="w-full h-12 flex items-center justify-center gap-2 rounded-full bg-accent text-sm font-medium text-white transition-all hover:bg-accent/90 active:scale-[0.98]"
+                >
+                  <Sparkles className="h-4 w-4" />
+                  Run AI Analysis
+                </button>
+                <button
+                  onClick={handleReset}
+                  className="w-full h-12 flex items-center justify-center gap-2 rounded-full border border-border bg-transparent text-sm font-medium text-muted hover:text-primary transition-colors"
+                >
+                  <RotateCcw className="h-4 w-4" />
+                  Select Different File
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+
+        {/* DONE / RESULTS */}
+        {phase === "done" && analysis && (
+          <motion.div
+            key="done"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+            className="flex flex-col gap-12"
+          >
+            <div className="flex items-center justify-between">
+              <h2 className="text-3xl font-medium text-primary tracking-tight">Analysis Results</h2>
+              <button
+                onClick={handleReset}
+                className="flex items-center gap-2 text-sm font-medium text-muted hover:text-accent transition-colors"
+              >
+                <RotateCcw className="h-4 w-4" />
+                New Scan
+              </button>
+            </div>
+            
+            <ErrorBoundary>
+              <AnalysisResults analysis={analysis} />
+            </ErrorBoundary>
+          </motion.div>
+        )}
+
+      </AnimatePresence>
+
+      {/* ERROR BANNER */}
+      {error && (
+        <div className="mt-12 flex items-center gap-4 rounded-md border border-error/20 bg-error/5 p-4 text-sm text-error">
+          <AlertCircle className="h-5 w-5 shrink-0" />
+          <p className="font-medium">{error}</p>
+        </div>
+      )}
     </div>
   );
 }

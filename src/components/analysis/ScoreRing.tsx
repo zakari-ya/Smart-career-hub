@@ -9,42 +9,44 @@ interface ScoreRingProps {
 
 export function ScoreRing({ 
   score, 
-  size = 120, 
-  strokeWidth = 8,
+  size = 140, 
+  strokeWidth = 2,
   className 
 }: ScoreRingProps) {
-  const radius = (size - strokeWidth) / 2;
+  const radius = (size - 10) / 2;
   const circumference = radius * 2 * Math.PI;
   const offset = circumference - (score / 100) * circumference;
 
-  let colorClass = "text-rose-500/80";
-  if (score >= 80) colorClass = "text-emerald-500/80";
-  else if (score >= 60) colorClass = "text-amber-500/80";
+  let colorClass = "stroke-error";
+  if (score >= 80) colorClass = "stroke-success";
+  else if (score >= 60) colorClass = "stroke-accent";
 
   return (
     <div className={cn("relative flex items-center justify-center", className)} style={{ width: size, height: size }}>
-      <svg width={size} height={size} className="rotate-[-90deg]">
+      <svg width={size} height={size} className="-rotate-90">
+        {/* Background Track */}
         <circle
           cx={size / 2}
           cy={size / 2}
           r={radius}
           strokeWidth={strokeWidth}
-          className="fill-none stroke-white/5"
+          className="fill-none stroke-border/50"
         />
+        {/* Progress Track */}
         <circle
           cx={size / 2}
           cy={size / 2}
           r={radius}
-          strokeWidth={strokeWidth}
+          strokeWidth={strokeWidth * 2}
           strokeDasharray={circumference}
           strokeDashoffset={offset}
-          className={cn("fill-none transition-all duration-1000 ease-out", colorClass)}
           strokeLinecap="round"
+          className={cn("fill-none transition-all duration-1000 ease-out", colorClass)}
         />
       </svg>
       <div className="absolute flex flex-col items-center justify-center">
-        <span className="font-display text-4xl font-medium tracking-tighter text-foreground/90">{score}</span>
-        <span className="mt-1 text-[10px] font-medium uppercase tracking-widest text-muted-foreground/50">Score</span>
+        <span className="text-5xl font-semibold text-primary tracking-tighter">{score}</span>
+        <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted">ATS Score</span>
       </div>
     </div>
   );

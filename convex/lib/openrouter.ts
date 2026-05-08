@@ -1,5 +1,5 @@
 
-const AI_MODEL = "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free";
+const AI_MODEL = "openai/gpt-oss-120b:free";
 
 export const callOpenRouter = async (systemPrompt: string, userPrompt: string) => {
   let retries = 3;

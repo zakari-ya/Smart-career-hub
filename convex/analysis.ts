@@ -17,7 +17,15 @@ export const analyzeResume = action({
     jobDescription: v.optional(v.string()),
     analysisType: v.union(v.literal("resume"), v.literal("match")),
   },
-  handler: async (ctx, args): Promise<{ success: boolean; analysis?: unknown; cached?: boolean; error?: string }> => {
+  handler: async (
+    ctx,
+    args,
+  ): Promise<{
+    success: boolean;
+    analysis?: unknown;
+    cached?: boolean;
+    error?: string;
+  }> => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("Unauthorized");
 
@@ -30,12 +38,18 @@ export const analyzeResume = action({
       .update(`${args.analysisType}-${truncatedResume}-${truncatedJD}`)
       .digest("hex");
 
-    const cachedResult = (await ctx.runQuery(internal.analyses.getCachedResult, {
-      contentHash,
-    })) as { result: unknown } | null;
+    const cachedResult = (await ctx.runQuery(
+      internal.analyses.getCachedResult,
+      {
+        contentHash,
+      },
+    )) as { result: unknown } | null;
 
     if (cachedResult) {
-      console.log("[Cache Hit] Returning existing analysis for hash:", contentHash);
+      console.log(
+        "[Cache Hit] Returning existing analysis for hash:",
+        contentHash,
+      );
       return { success: true, analysis: cachedResult.result, cached: true };
     }
 
@@ -51,7 +65,10 @@ export const analyzeResume = action({
     );
 
     if (!rateLimitRes.success) {
-      return { success: false, error: "Rate limit exceeded. Try again in an hour." };
+      return {
+        success: false,
+        error: "Rate limit exceeded. Try again in an hour.",
+      };
     }
 
     try {
@@ -59,7 +76,8 @@ export const analyzeResume = action({
       let userPrompt = "";
 
       if (args.analysisType === "resume") {
-        systemPrompt = "You are a senior technical recruiter and resume strategist. Return ONLY valid JSON.";
+        systemPrompt =
+          "You are a senior technical recruiter and resume strategist. Return ONLY valid JSON.";
         userPrompt = `Analyze the following resume text. Speak directly to the user as 'you'.
 
 --- EXTRACTED RESUME TEXT ---
@@ -89,7 +107,8 @@ OUTPUT JSON FORMAT:
   "honestAssessment": "string"
 }`;
       } else {
-        systemPrompt = "You are a senior technical recruiter matching resumes to job descriptions. Return ONLY valid JSON.";
+        systemPrompt =
+          "You are a senior technical recruiter matching resumes to job descriptions. Return ONLY valid JSON.";
         userPrompt = `Compare the resume to the job description. Be honest.
 
 --- RESUME ---
@@ -129,15 +148,15 @@ OUTPUT JSON FORMAT:
         type: args.analysisType,
       });
 
-      return { 
-        success: true, 
-        analysis 
+      return {
+        success: true,
+        analysis,
       };
     } catch (err) {
       console.error("[Analysis Action Error]:", err);
-      return { 
-        success: false, 
-        error: "AI analysis failed. Our recruiters are temporarily offline." 
+      return {
+        success: false,
+        error: "AI analysis failed. Our recruiters are temporarily offline.",
       };
     }
   },

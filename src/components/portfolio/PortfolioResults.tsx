@@ -7,32 +7,27 @@ interface PortfolioResultsProps {
 }
 
 export function PortfolioResults({ analysis }: PortfolioResultsProps) {
-  // We can reuse the AnalysisResults for the high-level summary
-  // and append the ProjectReviewCards below it.
-  
   if (!analysis.result || analysis.status !== "completed") {
     return <AnalysisResults analysis={analysis} />;
   }
 
-  // Example mockup for parsing improved descriptions back into project reviews
-  // In a real scenario, the AI might return structured JSON with {name, original, improved}
   const improvedDescriptions = analysis.result.improvedDescriptions || [];
 
   return (
-    <div className="space-y-8">
+    <div className="flex flex-col gap-24">
+      {/* Overview Section */}
       <AnalysisResults analysis={analysis} />
       
+      {/* Project Breakdown */}
       {improvedDescriptions.length > 0 && (
-        <div className="space-y-6 animate-fade-in animate-delay-200">
-          <div className="flex items-center justify-between">
-            <h3 className="text-2xl font-bold tracking-tight">Project Audits</h3>
-            <p className="text-sm text-muted-foreground">AI-enhanced READMEs & Descriptions</p>
+        <div className="flex flex-col gap-12 border-t border-border pt-16">
+          <div className="flex flex-col gap-2">
+            <h3 className="text-3xl font-medium text-primary tracking-tight">Repository Insights</h3>
+            <p className="text-lg text-secondary font-normal">AI-enhanced READMEs & Professional Descriptions</p>
           </div>
           
-          <div className="grid gap-6">
+          <div className="grid grid-cols-1 gap-8">
             {improvedDescriptions.map((desc, i) => {
-              // Assuming desc is formatted like "ProjectName: The new description..."
-              // This is a fallback if the AI didn't return a proper object.
               const split = desc.split(":");
               const name = split.length > 1 ? split[0] : `Project ${i + 1}`;
               const improved = split.length > 1 ? split.slice(1).join(":").trim() : desc;

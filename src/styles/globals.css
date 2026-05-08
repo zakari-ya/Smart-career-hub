@@ -1,112 +1,128 @@
 @import "tailwindcss";
 
-/* ─── Tell Tailwind v4 where to scan for class names ───────────────────────
-   Without @source, the v4 scanner won't find TSX/TS files and NO utility
-   classes get generated (flex, grid, items-center, etc. all missing).
-   ──────────────────────────────────────────────────────────────────────── */
 @source "../**/*.{tsx,ts,jsx,js}";
 @source "../../index.html";
 
-/* ─── Tailwind v4 CSS-first theme tokens ───────────────────────────────────
-   In v4 utilities like `bg-background` are generated from @theme vars,
-   not from tailwind.config.ts. We define HSL channel vars in :root and
-   reference them here via hsl().
-   ──────────────────────────────────────────────────────────────────────── */
 @theme {
-  /* Colors */
-  --color-background:        hsl(var(--bg-h) var(--bg-s) var(--bg-l));
-  --color-foreground:        hsl(var(--fg-h) var(--fg-s) var(--fg-l));
-  --color-muted:             hsl(220 20% 9%);
-  --color-muted-foreground:  hsl(220 10% 65%);
-  --color-border:            hsl(220 20% 12%);
-  --color-primary:           hsl(155 45% 45%);
-  --color-primary-foreground: hsl(0 0% 98%);
-  --color-accent:            hsl(155 45% 45%);
-  --color-accent-foreground: hsl(0 0% 98%);
-  --color-destructive:            hsl(0 84% 60%);
-  --color-destructive-foreground: hsl(0 0% 98%);
-  --color-ring:              hsl(155 45% 45%);
-  --color-card:              hsl(220 20% 8%);
-  --color-card-foreground:   hsl(0 0% 98%);
+  --color-background: var(--bg);
+  --color-surface: var(--bg-surface);
+  --color-primary: var(--text-primary);
+  --color-secondary: var(--text-secondary);
+  --color-muted: var(--text-muted);
+  --color-border: var(--border);
+  --color-accent: var(--accent);
+  --color-success: var(--success);
+  --color-error: var(--error);
 
-  /* Typography */
-  --font-sans:    "Plus Jakarta Sans", system-ui, sans-serif;
-  --font-display: "Outfit", system-ui, sans-serif;
-  --font-mono:    "JetBrains Mono", ui-monospace, monospace;
+  --font-sans: "Inter", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", monospace;
 
-  /* Border radius */
-  --radius-none: 0px;
-  --radius-sm:   2px;
-  --radius-md:   4px;
-  --radius-lg:   8px;
+  --radius-button: 9999px;
+  --radius-card: 12px;
+  --radius-input: 8px;
+  --radius-table: 0px;
 
-  /* Animations */
-  --animate-fade-in: fadeIn 0.2s ease-out;
-  --animate-slide-up: slideUp 0.3s ease-out;
+  --animate-fade-in: fadeIn 0.15s ease-out;
+  --animate-slide-up: slideUp 0.2s ease-out;
 }
 
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to   { opacity: 1; }
-}
-
-@keyframes slideUp {
-  from { opacity: 0; transform: translateY(8px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-
-/* ─── Base layer: CSS custom properties + body defaults ─────────────────── */
 @layer base {
   :root {
-    --bg-h: 220; --bg-s: 20%; --bg-l: 6%;
-    --fg-h: 0;   --fg-s: 0%;  --fg-l: 98%;
+    --bg: #FFFFFF;
+    --bg-surface: #F5F5F5;
+    --text-primary: #0A0A0A;
+    --text-secondary: #737373;
+    --text-muted: #A3A3A3;
+    --border: #E5E5E5;
+    --accent: #171717;
+    --success: #22C55E;
+    --error: #EF4444;
   }
 
   *, *::before, *::after {
-    border-color: hsl(220 20% 12%);
+    border-color: var(--border);
+    box-sizing: border-box;
+  }
+
+  html {
+    scroll-behavior: smooth;
   }
 
   body {
-    background-color: hsl(220 20% 6%);
-    color: hsl(0 0% 98%);
-    font-family: "Plus Jakarta Sans", system-ui, sans-serif;
+    background-color: var(--bg);
+    color: var(--text-primary);
+    font-family: "Inter", system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    line-height: 1.6;
+    overflow-x: hidden;
+  }
+
+  /* Editorial Whitespace Focus */
+  main {
+    @apply transition-all duration-300;
+  }
+
+  /* Noise Texture Overlay */
+  body::before {
+    content: "";
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3%3Ffilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+    opacity: 0.03;
+    pointer-events: none;
+    z-index: 9999;
   }
 
   h1, h2, h3, h4, h5, h6 {
-    font-family: "Outfit", system-ui, sans-serif;
-    font-weight: 500;
-    letter-spacing: -0.02em;
+    font-weight: 600;
+    letter-spacing: -0.025em;
+    line-height: 1.1;
+    color: var(--text-primary);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  /* Monospace for code elements */
+  code, pre {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 0.875rem;
   }
 }
 
-/* ─── Utility helpers ───────────────────────────────────────────────────── */
 @layer utilities {
-  .bg-noise {
-    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
-  }
-
-  .noise-overlay {
-    position: relative;
-  }
-  .noise-overlay::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    pointer-events: none;
-    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
-    opacity: 0.03;
-    z-index: 50;
-  }
-
-  /* Shorthand semantic surface helpers */
   .surface {
-    background-color: hsl(220 20% 8%);
-    border: 1px solid hsl(220 20% 12%);
+    background-color: var(--bg-surface);
   }
-  .surface-elevated {
-    background-color: hsl(220 20% 10%);
-    border: 1px solid hsl(220 20% 14%);
+
+  .nav-active {
+    color: var(--text-primary);
+    border-left: 2px solid var(--accent);
+    background-color: rgba(0, 0, 0, 0.02);
+  }
+
+  .skeleton {
+    background: var(--border);
+    animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    border-radius: var(--radius-card);
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: .5; }
+  }
+
+  /* Single-page integration helper */
+  .no-separator > * {
+    border: none !important;
+    box-shadow: none !important;
   }
 }
+

@@ -1,9 +1,20 @@
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import {
+  BrowserRouter,
+  Routes,
+  Route,
+  Navigate,
+  Outlet,
+  useLocation,
+} from "react-router-dom";
 import { AuthProvider } from "./lib/clerk";
 import { Toaster } from "sonner";
-import { AppLayout } from "./components/layout/AppLayout";
-import { useAuth, SignIn, SignUp } from "@clerk/clerk-react";
+import { Sidebar } from "./components/layout/Sidebar";
+import { useAuth, useUser, SignIn, SignUp } from "@clerk/clerk-react";
 import { ErrorBoundary } from "./components/ui/ErrorBoundary";
+import { useEffect } from "react";
+import { useMutation } from "convex/react";
+import { api } from "../convex/_generated/api";
+import { cn } from "./lib/utils";
 
 // Pages
 import { Landing } from "./pages/Landing";
@@ -13,25 +24,19 @@ import { PortfolioAuditor } from "./pages/PortfolioAuditor";
 import { JobMatcher } from "./pages/JobMatcher";
 import { Settings } from "./pages/Settings";
 
-/**
- * ProtectedRoute — guards authenticated pages.
- *
- * Uses `isLoaded` so Convex queries inside children NEVER fire
- * before Clerk has resolved the session. Previously this relied on
- * <SignedIn>/<SignedOut> which could mount children while Clerk was
- * still loading, causing Convex to run queries with no auth token →
- * "Unauthorized" thrown → black screen.
- */
-function ProtectedRoute({ children }: { readonly children: React.ReactNode }): React.ReactElement {
+function ProtectedRoute({
+  children,
+}: {
+  readonly children: React.ReactNode;
+}): React.ReactElement {
   const { isLoaded, isSignedIn } = useAuth();
 
-  // Clerk still resolving session — show nothing (avoids premature Convex queries)
   if (!isLoaded) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-3">
-          <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-          <p className="text-sm text-muted-foreground">Loading…</p>
+          <div className="h-6 w-6 animate-spin rounded-full border-2 border-accent border-t-transparent" />
+          <p className="text-sm text-muted">Loading…</p>
         </div>
       </div>
     );
@@ -44,13 +49,69 @@ function ProtectedRoute({ children }: { readonly children: React.ReactNode }): R
   return <>{children}</>;
 }
 
+import { MobileNav } from "./components/layout/MobileNav";
+import { TopNavbar } from "./components/layout/TopNavbar";
+
+function RootLayout() {
+  const { isLoaded, isSignedIn } = useAuth();
+  const { user } = useUser();
+  const location = useLocation();
+  const syncUser = useMutation(api.auth.syncUser);
+
+  const isLandingPage = location.pathname === "/";
+  const isAuthPage = location.pathname.startsWith("/sign-in") || location.pathname.startsWith("/sign-up");
+  const isAppRoute = !isLandingPage && !isAuthPage;
+
+  useEffect(() => {
+    if (isLoaded && isSignedIn && user) {
+      syncUser({
+        email: user.primaryEmailAddress?.emailAddress ?? "",
+        name: user.fullName ?? user.firstName ?? "User",
+        avatarUrl: user.imageUrl ?? undefined,
+      }).catch((err: unknown) => {
+        console.error("[syncUser] Failed to sync user to Convex:", err);
+      });
+    }
+  }, [isLoaded, isSignedIn, user, syncUser]);
+
+  return (
+    <div className="flex min-h-screen bg-background text-primary selection:bg-accent/20 selection:text-accent">
+      {isAppRoute ? (
+        <>
+          <Sidebar />
+          <MobileNav />
+        </>
+      ) : (
+        !isAuthPage && <TopNavbar />
+      )}
+      <main 
+        id="main-content" 
+        className={cn(
+          "flex-1 min-h-screen",
+          isAppRoute ? "lg:ml-60 pt-16 lg:pt-0" : !isAuthPage ? "pt-16" : ""
+        )}
+      >
+        <div className={cn(
+          "mx-auto",
+          isLandingPage ? "max-w-[1400px] px-6 lg:px-12" : "max-w-[1200px] p-6 lg:p-12"
+        )}>
+          <Outlet />
+        </div>
+      </main>
+    </div>
+  );
+}
+
+
 function App(): React.ReactElement {
   return (
-    <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+    <BrowserRouter
+      future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
+    >
       <AuthProvider>
-        <div className="min-h-screen bg-background text-foreground font-sans selection:bg-primary selection:text-primary-foreground">
+        <div className="min-h-screen bg-background text-primary font-sans selection:bg-accent/20 selection:text-accent">
           <Routes>
-            <Route element={<AppLayout />}>
+            <Route element={<RootLayout />}>
               {/* Public Routes */}
               <Route path="/" element={<Landing />} />
 
@@ -72,8 +133,7 @@ function App(): React.ReactElement {
                 }
               />
 
-              {/* Protected Routes — each wrapped in ErrorBoundary so a Convex
-                  Unauthorized error can't black-screen the whole app */}
+              {/* Protected Routes */}
               <Route
                 path="/dashboard"
                 element={

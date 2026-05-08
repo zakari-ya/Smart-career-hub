@@ -5,17 +5,24 @@ import { JobMatcherForm } from "../components/jobs/JobMatcherForm";
 import { AnalysisResults } from "../components/analysis/AnalysisResults";
 import { Analysis } from "../types";
 import { toast } from "sonner";
-import { Button } from "../components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
-import { FileText, Sparkles, AlertCircle, CheckCircle2, Search } from "lucide-react";
+import {
+  Sparkles,
+  AlertCircle,
+  CheckCircle2,
+  Briefcase,
+  Loader2,
+  RotateCcw,
+} from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ErrorBoundary } from "../components/ui/ErrorBoundary";
+
+type Phase = "idle" | "extracting" | "extracted" | "analyzing" | "done";
 
 export function JobMatcher() {
   const [extractedText, setExtractedText] = useState<string>("");
   const [jobDescription, setJobDescription] = useState<string>("");
   const [analysis, setAnalysis] = useState<Analysis | null>(null);
-  const [phase, setPhase] = useState<"idle" | "extracting" | "extracted" | "analyzing" | "done">("idle");
+  const [phase, setPhase] = useState<Phase>("idle");
   const [error, setError] = useState<string>("");
 
   const resumes = useQuery(api.resumes.getMyResumes);
@@ -37,21 +44,19 @@ export function JobMatcher() {
         setPhase("extracted");
         return;
       }
-
       const result = await extractTextAction({
-        fileBase64: "", // Backend will fetch from storage
+        fileBase64: "",
         fileName: resume.title,
         fileType: resume.fileType,
         ...(resume.fileStorageId ? { storageId: resume.fileStorageId } : {}),
       });
-
       if (result.success && result.extractedText) {
         setExtractedText(result.extractedText);
         setPhase("extracted");
       } else {
-        setError(result.error || "Extraction failed");
+        setError(result.error ?? "Extraction failed");
         setPhase("idle");
-        toast.error(result.error || "Extraction failed");
+        toast.error(result.error ?? "Extraction failed");
       }
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Extraction error");
@@ -61,7 +66,6 @@ export function JobMatcher() {
 
   const handleRunMatch = async () => {
     if (!extractedText || !jobDescription) return;
-
     setPhase("analyzing");
     setError("");
 
@@ -73,20 +77,20 @@ export function JobMatcher() {
       });
 
       if (result.success && result.analysis) {
-        interface JobMatchResult {
+        interface AIMatchResult {
           matchScore?: number;
           honestAssessment?: string;
           matchReason?: string;
           skillsAnalysis?: {
             matchedSkills?: string[];
             missingSkills?: string[];
+            transferableSkills?: string[];
           };
           experienceGap?: string;
           resumeTailoring?: string[];
           realisticNextSteps?: string[];
         }
-        const aiResult = result.analysis as JobMatchResult;
-        
+        const aiResult = result.analysis as AIMatchResult;
         const mappedAnalysis = {
           _id: "temp",
           userId: "temp",
@@ -94,29 +98,29 @@ export function JobMatcher() {
           createdAt: Date.now(),
           status: "completed",
           type: "job_match",
-          aiModel: "gpt-4",
+          aiModel: "gpt-4o",
           result: {
-            score: aiResult.matchScore || 0,
-            summary: aiResult.honestAssessment || aiResult.matchReason || "Analysis completed.",
-            strengths: aiResult.skillsAnalysis?.matchedSkills || [],
+            score: aiResult.matchScore ?? 0,
+            summary: aiResult.honestAssessment ?? aiResult.matchReason ?? "Analysis completed.",
+            strengths: aiResult.skillsAnalysis?.matchedSkills ?? [],
             weaknesses: [
-              ...(aiResult.skillsAnalysis?.missingSkills || []),
-              aiResult.experienceGap
+              ...(aiResult.skillsAnalysis?.missingSkills ?? []),
+              aiResult.experienceGap,
             ].filter(Boolean) as string[],
             suggestions: [
-              ...(aiResult.resumeTailoring || []),
-              ...(aiResult.realisticNextSteps || [])
+              ...(aiResult.resumeTailoring ?? []),
+              ...(aiResult.realisticNextSteps ?? []),
             ],
-            missingSkills: aiResult.skillsAnalysis?.missingSkills || []
-          }
+            missingSkills: aiResult.skillsAnalysis?.missingSkills ?? [],
+          },
         } as unknown as Analysis;
         setAnalysis(mappedAnalysis);
         setPhase("done");
         toast.success("Job match analysis complete!");
       } else {
-        setError(result.error || "Match analysis failed");
+        setError(result.error ?? "Match analysis failed");
         setPhase("extracted");
-        toast.error(result.error || "Match analysis failed");
+        toast.error(result.error ?? "Match analysis failed");
       }
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "AI service error");
@@ -124,188 +128,182 @@ export function JobMatcher() {
     }
   };
 
-  return (
-    <div className="flex-1 space-y-8 p-8 pt-6 max-w-6xl mx-auto w-full relative">
-      {/* Noise Texture Overlay */}
-      <div className="absolute inset-0 pointer-events-none opacity-[0.03] bg-noise z-0" />
+  const handleReset = () => {
+    setPhase("idle");
+    setExtractedText("");
+    setJobDescription("");
+    setAnalysis(null);
+    setError("");
+  };
 
-      <div className="flex flex-col space-y-2 relative z-10">
-        <h2 className="text-4xl font-bold tracking-tight">Job Matcher</h2>
-        <p className="text-muted-foreground text-lg">
-          Quantify your alignment with any role. Our AI analyzes the "hidden requirements" in job descriptions.
+  const isLoading = phase === "extracting" || phase === "analyzing";
+
+  return (
+    <div className="mx-auto max-w-[1200px] w-full py-12 px-6 animate-fade-in">
+      {/* ── Page Header ─────────────────────────────────────────────── */}
+      <div className="mb-16 border-b border-border pb-10">
+        <h1 className="text-5xl font-semibold text-primary tracking-tight leading-tight mb-4">
+          Job Matcher
+        </h1>
+        <p className="text-lg text-secondary font-normal max-w-2xl">
+          Quantify your alignment with any role. Our AI analyses the hidden requirements 
+          in job descriptions and surfaces exact skill gaps.
         </p>
       </div>
 
-      <div className="grid gap-10 lg:grid-cols-12 relative z-10">
+      {/* ── Two-column layout ────────────────────────────────────────── */}
+      <div className="grid grid-cols-1 gap-16 lg:grid-cols-12">
+        {/* Left — Form */}
         <div className="lg:col-span-5">
-          <motion.div 
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            className="sticky top-6"
-          >
-            <Card className="border-slate-200 dark:border-slate-800 shadow-sm">
-              <CardHeader className="bg-muted/30 border-b">
-                <CardTitle className="text-sm font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-                  <Search className="h-4 w-4" />
-                  Search Parameters
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="pt-6">
-                <JobMatcherForm 
-                  onSubmit={handleInitialSubmit} 
-                  isLoading={phase === "extracting" || phase === "analyzing"} 
+          <div className="lg:sticky lg:top-24">
+            <div className="flex flex-col gap-8">
+              <div>
+                <h2 className="text-2xl font-medium text-primary tracking-tight mb-2">Match Parameters</h2>
+                <p className="text-sm text-secondary font-normal">Select your profile and paste the job details.</p>
+              </div>
+              <div className="p-8 rounded-card bg-surface border border-border/30">
+                <JobMatcherForm
+                  onSubmit={handleInitialSubmit}
+                  isLoading={isLoading}
                 />
-              </CardContent>
-            </Card>
-          </motion.div>
+              </div>
+            </div>
+          </div>
         </div>
-        
-        <div className="lg:col-span-7 space-y-6">
+
+        {/* Right — States panel */}
+        <div className="lg:col-span-7">
           <AnimatePresence mode="wait">
-            {phase === "extracting" && (
+            {/* IDLE */}
+            {phase === "idle" && (
               <motion.div
-                key="extracting"
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
+                key="idle"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="flex h-80 flex-col items-center justify-center space-y-4 rounded-xl border-2 border-dashed bg-muted/5 p-12 text-center"
+                className="flex flex-col items-center justify-center gap-8 py-32 text-center border-2 border-dashed border-border/50 rounded-card bg-surface/10"
               >
-                <div className="relative">
-                  <div className="h-12 w-12 rounded-full border-2 border-primary/20 border-t-primary animate-spin" />
-                  <FileText className="absolute inset-0 m-auto h-5 w-5 text-primary" />
+                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-surface border border-border/50">
+                  <Briefcase className="h-8 w-8 text-muted" strokeWidth={1} />
                 </div>
-                <h3 className="font-bold text-lg tracking-tight">Accessing Resume Data</h3>
-                <p className="text-sm text-muted-foreground max-w-xs italic">
-                  One moment, we're parsing your document to prepare for the AI comparison.
-                </p>
+                <div>
+                  <h3 className="text-xl font-medium text-primary">Find your perfect match</h3>
+                  <p className="mt-2 text-sm text-secondary font-normal max-w-xs mx-auto">
+                    Configure your parameters on the left to see exactly how your experience 
+                    aligns with the role.
+                  </p>
+                </div>
               </motion.div>
             )}
 
+            {/* EXTRACTING / ANALYZING LOADING */}
+            {(phase === "extracting" || phase === "analyzing") && (
+              <motion.div
+                key="loading"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="flex flex-col items-center justify-center gap-8 py-32 text-center"
+              >
+                <div className="relative">
+                  <div className="h-24 w-24 rounded-full border border-border flex items-center justify-center">
+                    <Loader2 className="h-10 w-10 animate-spin text-accent" strokeWidth={1} />
+                  </div>
+                  <Sparkles className="absolute -top-2 -right-2 h-8 w-8 text-accent animate-pulse" strokeWidth={1} />
+                </div>
+                <div>
+                  <h2 className="text-3xl font-medium text-primary tracking-tight">
+                    {phase === "extracting" ? "Preparing Resume..." : "Quantifying Match..."}
+                  </h2>
+                  <p className="mt-2 text-secondary font-normal max-w-sm mx-auto">
+                    {phase === "extracting" 
+                      ? "We're parsing your document to prepare for the comparison."
+                      : "We're cross-referencing your experience with every bullet point in the job description."}
+                  </p>
+                </div>
+              </motion.div>
+            )}
+
+            {/* EXTRACTED — READY TO MATCH */}
             {phase === "extracted" && (
               <motion.div
                 key="extracted"
                 initial={{ opacity: 0, scale: 0.98 }}
                 animate={{ opacity: 1, scale: 1 }}
-                className="space-y-6"
+                exit={{ opacity: 0 }}
+                className="flex flex-col gap-8"
               >
-                <Card className="border-primary/20 bg-primary/[0.02] shadow-xl overflow-hidden">
-                  <div className="h-1 bg-gradient-to-r from-primary/50 via-primary to-primary/50" />
-                  <CardHeader className="pb-4">
-                    <div className="flex items-center justify-between">
-                      <CardTitle className="text-xl flex items-center gap-3">
-                        <CheckCircle2 className="h-6 w-6 text-primary" />
-                        Ready for Comparison
-                      </CardTitle>
-                      <div className="text-[10px] font-bold px-2 py-1 bg-primary text-primary-foreground rounded uppercase tracking-tighter">
-                        Content Verified
+                <div className="p-8 rounded-card border-2 border-accent/20 bg-accent/5 flex flex-col gap-6">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-accent text-white">
+                        <CheckCircle2 className="h-4 w-4" />
                       </div>
+                      <h3 className="text-xl font-medium text-primary">Resume Parsed</h3>
                     </div>
-                    <p className="text-sm text-muted-foreground mt-2">
-                      We've successfully extracted your resume text. Click below to begin the deep-match analysis against the job description.
-                    </p>
-                  </CardHeader>
-                  <CardContent className="space-y-6">
-                    <div className="relative">
-                      <div className="bg-background border-2 border-slate-200 dark:border-slate-800 rounded-lg p-5 max-h-64 overflow-y-auto font-mono text-[11px] leading-relaxed">
-                        {extractedText}
-                      </div>
-                      <div className="absolute inset-x-0 bottom-0 h-8 bg-gradient-to-t from-background to-transparent pointer-events-none opacity-60" />
-                    </div>
-                    <Button 
-                      onClick={handleRunMatch} 
-                      className="w-full bg-primary hover:bg-primary/90 shadow-lg h-14 text-lg font-bold transition-all hover:scale-[1.01] active:scale-[0.99]"
-                    >
-                      <Sparkles className="mr-3 h-6 w-6" />
-                      Generate Match Report
-                    </Button>
-                  </CardContent>
-                </Card>
+                    <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-accent">Ready</span>
+                  </div>
+                  <p className="text-sm text-secondary leading-relaxed">
+                    Your resume data is successfully cached. Click below to run the AI comparison 
+                    against the provided job description.
+                  </p>
+                  <button
+                    onClick={() => void handleRunMatch()}
+                    className="w-full h-12 flex items-center justify-center gap-2 rounded-full bg-accent text-sm font-medium text-white transition-all hover:bg-accent/90 active:scale-[0.98]"
+                  >
+                    <Sparkles className="h-4 w-4" />
+                    Generate Match Report
+                  </button>
+                  <button
+                    onClick={handleReset}
+                    className="w-full h-12 flex items-center justify-center gap-2 rounded-full border border-border bg-transparent text-sm font-medium text-muted hover:text-primary transition-colors"
+                  >
+                    <RotateCcw className="h-4 w-4" />
+                    Reset Parameters
+                  </button>
+                </div>
+
+                <div className="rounded-card bg-surface p-8 border border-border/30">
+                  <h4 className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted mb-4">Resume Preview</h4>
+                  <pre className="max-h-48 overflow-y-auto text-xs leading-relaxed text-secondary whitespace-pre-wrap font-mono scrollbar-hide">
+                    {extractedText}
+                  </pre>
+                </div>
               </motion.div>
             )}
 
-            {phase === "analyzing" && (
-              <motion.div
-                key="analyzing"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="space-y-6"
-              >
-                <Card className="border-slate-200 dark:border-slate-800 shadow-lg">
-                  <CardContent className="pt-10 pb-10 flex flex-col items-center">
-                    <div className="relative mb-8">
-                      <div className="h-20 w-20 rounded-full border-4 border-primary/10 border-t-primary animate-spin" />
-                      <Sparkles className="absolute inset-0 m-auto h-8 w-8 text-primary animate-pulse" />
-                    </div>
-                    <h3 className="text-2xl font-bold tracking-tight mb-2">Simulating Recruiter Review</h3>
-                    <p className="text-muted-foreground text-center max-w-sm mb-8">
-                      Our AI is currently cross-referencing your experience with every bullet point in the job description.
-                    </p>
-                    
-                    <div className="w-full max-w-md space-y-4">
-                      <div className="flex justify-between items-end mb-1">
-                        <span className="text-[10px] font-bold uppercase tracking-widest text-primary">Cross-Referencing Skills</span>
-                        <span className="text-[10px] font-mono text-muted-foreground">Running...</span>
-                      </div>
-                      <div className="h-1.5 bg-muted rounded-full overflow-hidden">
-                        <motion.div 
-                          className="h-full bg-primary"
-                          animate={{ width: ["10%", "90%", "30%", "70%"] }}
-                          transition={{ repeat: Infinity, duration: 3, ease: "easeInOut" }}
-                        />
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </motion.div>
-            )}
-
+            {/* DONE — RESULTS */}
             {phase === "done" && analysis && (
               <motion.div
                 key="done"
-                initial={{ opacity: 0, y: 20 }}
+                initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, ease: "easeOut" }}
+                exit={{ opacity: 0 }}
+                className="flex flex-col gap-8"
               >
-                <ErrorBoundary fallback={<div className="p-4 text-destructive border rounded-md">Analysis returned empty data</div>}>
+                <div className="flex items-center justify-between border-b border-border pb-6">
+                  <h2 className="text-3xl font-medium text-primary tracking-tight">Match Results</h2>
+                  <button
+                    onClick={handleReset}
+                    className="flex items-center gap-2 text-sm font-medium text-muted hover:text-accent transition-colors"
+                  >
+                    <RotateCcw className="h-4 w-4" />
+                    New Match
+                  </button>
+                </div>
+                <ErrorBoundary>
                   <AnalysisResults analysis={analysis} />
                 </ErrorBoundary>
               </motion.div>
             )}
-
-            {phase === "idle" && !analysis && (
-              <motion.div
-                key="idle"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="flex h-full min-h-[400px] flex-col items-center justify-center rounded-xl border-2 border-dashed bg-muted/10 p-12 text-center"
-              >
-                <div className="p-4 rounded-full bg-muted/30 mb-6">
-                  <Search className="h-10 w-10 text-muted-foreground/50" />
-                </div>
-                <h3 className="mb-3 text-2xl font-bold tracking-tight">Alignment Report</h3>
-                <p className="text-muted-foreground max-w-sm leading-relaxed">
-                  Provide your target job description and select a resume to begin. 
-                  We'll analyze skill gaps, experience alignment, and tailoring opportunities.
-                </p>
-              </motion.div>
-            )}
           </AnimatePresence>
 
+          {/* ERROR BANNER */}
           {error && (
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className="flex items-center gap-4 p-5 text-sm text-destructive bg-destructive/5 rounded-xl border-2 border-destructive/20"
-            >
-              <AlertCircle className="h-6 w-6 flex-shrink-0" />
-              <div>
-                <p className="font-bold text-base">Match Analysis Halted</p>
-                <p className="opacity-90 mt-0.5">{error}</p>
-                <Button variant="link" className="p-0 h-auto text-destructive font-bold mt-2 hover:underline" onClick={() => setPhase("idle")}>
-                  Try again
-                </Button>
-              </div>
-            </motion.div>
+            <div className="mt-8 flex items-center gap-4 rounded-md border border-error/20 bg-error/5 p-4 text-sm text-error">
+              <AlertCircle className="h-5 w-5 shrink-0" />
+              <p className="font-medium">{error}</p>
+            </div>
           )}
         </div>
       </div>
