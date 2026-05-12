@@ -84,19 +84,28 @@ function RootLayout() {
       ) : (
         !isAuthPage && <TopNavbar />
       )}
-      <main 
-        id="main-content" 
+      <main
+        id="main-content"
         className={cn(
-          "flex-1 min-h-screen",
-          isAppRoute ? "lg:ml-60 pt-16 lg:pt-0" : !isAuthPage ? "pt-16" : ""
+          "flex-1",
+          isAppRoute
+            ? "lg:ml-60 pt-16 lg:pt-0 overflow-hidden"
+            : !isAuthPage
+              ? "pt-16"
+              : ""
         )}
       >
-        <div className={cn(
-          "mx-auto",
-          isLandingPage ? "max-w-[1400px] px-6 lg:px-12" : "max-w-[1200px] p-6 lg:p-12"
-        )}>
+        {isAppRoute ? (
+          // App pages manage their own internal layout (StepWizard fills viewport)
           <Outlet />
-        </div>
+        ) : (
+          <div className={cn(
+            "mx-auto",
+            isLandingPage ? "max-w-[1400px] px-6 lg:px-12" : "max-w-[1200px] p-6 lg:p-12"
+          )}>
+            <Outlet />
+          </div>
+        )}
       </main>
     </div>
   );

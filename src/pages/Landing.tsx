@@ -7,22 +7,20 @@ import {
   ArrowRight,
   ChevronRight
 } from "lucide-react";
+import { motion } from "framer-motion";
+import { StaggerContainer } from "../components/animations/StaggerContainer";
 
 export function Landing() {
   return (
-    <div className="flex flex-col gap-32 pb-32 animate-fade-in">
+    <div className="flex flex-col gap-32 pb-32 overflow-hidden">
       {/* Hero */}
       <section className="flex flex-col items-center text-center pt-20">
-        <div className="mb-16 group relative">
-          <div className="absolute inset-0 bg-accent/5 rounded-full blur-3xl opacity-0 group-hover:opacity-100 transition-opacity" />
-          <img 
-            src="/mascot.png" 
-            alt="Mascot" 
-            className="relative h-64 w-64 md:h-80 md:w-80 object-contain filter grayscale opacity-90 transition-transform duration-700 group-hover:scale-105"
-          />
-        </div>
-
-        <div className="flex flex-col items-center gap-6 max-w-4xl">
+        <motion.div 
+          className="flex flex-col items-center gap-6 max-w-4xl"
+          initial={{ opacity: 0, y: 40 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8, ease: [0.25, 0.1, 0.25, 1] }}
+        >
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-surface border border-border/50">
             <div className="h-1.5 w-1.5 rounded-full bg-accent animate-pulse" />
             <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted">
@@ -49,16 +47,16 @@ export function Landing() {
             </Link>
             <Link
               to="/resume-scanner?guest=true"
-              className="flex items-center justify-center h-14 px-12 rounded-full border border-border bg-white text-primary font-semibold text-lg transition-all hover:bg-surface active:scale-[0.98]"
+              className="flex items-center justify-center h-14 px-12 rounded-full border border-border bg-surface text-secondary font-semibold text-lg transition-all hover:bg-border hover:text-primary active:scale-[0.98]"
             >
               Try Guest Mode
             </Link>
           </div>
-        </div>
+        </motion.div>
       </section>
 
       {/* Feature Grid */}
-      <section className="grid grid-cols-1 md:grid-cols-3 gap-12">
+      <StaggerContainer className="grid grid-cols-1 md:grid-cols-3 gap-12">
         {[
           {
             title: "Resume Scanner",
@@ -78,30 +76,43 @@ export function Landing() {
             icon: Briefcase,
             link: "/job-matcher"
           }
-        ].map((feature) => (
-          <Link 
+        ].map((feature, i) => (
+          <motion.div
             key={feature.title}
-            to={feature.link}
-            className="group flex flex-col gap-6 p-8 rounded-card border border-border/30 bg-surface transition-all hover:border-accent hover:-translate-y-1"
+            variants={{
+              hidden: { opacity: 0, y: 30 },
+              visible: { opacity: 1, y: 0, transition: { duration: 0.5, delay: i * 0.1 } }
+            }}
           >
-            <div className="flex h-12 w-12 items-center justify-center rounded-sm bg-background border border-border/50 text-accent">
-              <feature.icon className="h-6 w-6" strokeWidth={1.5} />
-            </div>
-            <div className="flex flex-col gap-2">
-              <h3 className="text-xl font-semibold text-primary">{feature.title}</h3>
-              <p className="text-sm text-secondary leading-relaxed font-medium">
-                {feature.desc}
-              </p>
-            </div>
-            <div className="mt-4 flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-accent group-hover:gap-3 transition-all">
-              Explore <ChevronRight className="h-3 w-3" />
-            </div>
-          </Link>
+            <Link 
+              to={feature.link}
+              className="group flex flex-col gap-6 p-8 rounded-card border border-border/30 bg-surface transition-all hover:border-accent hover:-translate-y-1 h-full block"
+            >
+              <div className="flex h-12 w-12 items-center justify-center rounded-sm bg-background border border-border/50 text-accent">
+                <feature.icon className="h-6 w-6" strokeWidth={1.5} />
+              </div>
+              <div className="flex flex-col gap-2">
+                <h3 className="text-xl font-semibold text-primary">{feature.title}</h3>
+                <p className="text-sm text-secondary leading-relaxed font-medium">
+                  {feature.desc}
+                </p>
+              </div>
+              <div className="mt-4 flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-accent group-hover:gap-3 transition-all mt-auto">
+                Explore <ChevronRight className="h-3 w-3" />
+              </div>
+            </Link>
+          </motion.div>
         ))}
-      </section>
+      </StaggerContainer>
 
       {/* Trust Section */}
-      <section className="flex flex-col md:flex-row items-center gap-20 p-12 md:p-20 rounded-card bg-surface border border-border/30">
+      <motion.section 
+        className="flex flex-col md:flex-row items-center gap-20 p-12 md:p-20 rounded-card bg-surface border border-border/30"
+        initial={{ opacity: 0, y: 40 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, margin: "-100px" }}
+        transition={{ duration: 0.7 }}
+      >
         <div className="flex-1 flex flex-col gap-8">
           <div className="flex flex-col gap-2">
             <div className="text-[10px] font-bold uppercase tracking-[0.3em] text-accent">
@@ -139,7 +150,7 @@ export function Landing() {
             </svg>
           </div>
         </div>
-      </section>
+      </motion.section>
 
       {/* Footer */}
       <footer className="flex flex-col gap-12 pt-12 border-t border-border/30">

@@ -14,6 +14,7 @@ export const extractText = action({
     fileName: v.string(),
     fileType: v.string(), // "pdf", "docx", "txt", "md"
     storageId: v.optional(v.id("_storage")),
+    resumeId: v.optional(v.id("resumes")),
   },
   handler: async (ctx, args) => {
     try {
@@ -45,6 +46,14 @@ export const extractText = action({
       const validation = validateExtraction(rawText);
       if (!validation.valid) {
         return { success: false, error: validation.error };
+      }
+
+      if (args.resumeId) {
+        const { internal } = await import("./_generated/api");
+        await ctx.runMutation(internal.resumes.updateExtractedTextInternal, {
+          resumeId: args.resumeId,
+          text: rawText,
+        });
       }
 
       return { 

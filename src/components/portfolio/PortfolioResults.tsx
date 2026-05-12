@@ -1,6 +1,7 @@
 import { Analysis } from "../../types";
 import { ProjectReviewCard } from "./ProjectReviewCard";
 import { AnalysisResults } from "../analysis/AnalysisResults";
+import { StaggerContainer } from "../animations/StaggerContainer";
 
 interface PortfolioResultsProps {
   analysis: Analysis;
@@ -26,7 +27,7 @@ export function PortfolioResults({ analysis }: PortfolioResultsProps) {
             <p className="text-lg text-secondary font-normal">AI-enhanced READMEs & Professional Descriptions</p>
           </div>
           
-          <div className="grid grid-cols-1 gap-8">
+          <StaggerContainer className="grid grid-cols-1 gap-8">
             {improvedDescriptions.map((desc, i) => {
               const split = desc.split(":");
               const name = split.length > 1 ? split[0] : `Project ${i + 1}`;
@@ -41,7 +42,7 @@ export function PortfolioResults({ analysis }: PortfolioResultsProps) {
                 />
               );
             })}
-          </div>
+          </StaggerContainer>
         </div>
       )}
     </div>

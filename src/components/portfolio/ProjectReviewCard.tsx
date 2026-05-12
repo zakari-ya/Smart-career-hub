@@ -1,4 +1,5 @@
 import { Github, Star, GitFork, ExternalLink, Sparkles } from "lucide-react";
+import { AnimatedCard } from "../animations/AnimatedCard";
 
 interface ProjectReviewCardProps {
   name: string;
@@ -20,7 +21,7 @@ export function ProjectReviewCard({
   url,
 }: ProjectReviewCardProps) {
   return (
-    <div className="group flex flex-col rounded-card bg-surface border border-border/30 overflow-hidden transition-all hover:border-accent">
+    <AnimatedCard className="group flex flex-col p-0 overflow-hidden transition-all hover:border-accent">
       {/* Header */}
       <div className="flex items-center justify-between p-6 border-b border-border/20 bg-background/50">
         <div className="flex flex-col gap-1">
@@ -80,6 +81,6 @@ export function ProjectReviewCard({
           </div>
         </div>
       </div>
-    </div>
+    </AnimatedCard>
   );
 }

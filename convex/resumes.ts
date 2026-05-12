@@ -15,6 +15,18 @@ export const getMyResumes = query({
   },
 });
 
+export const getResume = query({
+  args: { resumeId: v.id("resumes") },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) return null;
+
+    const resume = await ctx.db.get(args.resumeId);
+    if (!resume || resume.clerkId !== identity.subject) return null;
+    return resume;
+  },
+});
+
 export const createResume = mutation({
   args: {
     title: v.string(),

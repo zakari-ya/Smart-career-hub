@@ -7,8 +7,22 @@ import { PortfolioResults } from "../components/portfolio/PortfolioResults";
 import { Analysis } from "../types";
 import { toast } from "sonner";
 import { ErrorBoundary } from "../components/ui/ErrorBoundary";
-import { Github, Loader2, Activity, Search } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { Github, Loader2, Activity, GitBranch, Users, Star } from "lucide-react";
+import { StepWizard } from "../components/ui/StepWizard";
+
+const WIZARD_STEPS = [
+  { id: "enter", label: "Enter URL" },
+  { id: "audit", label: "Auditing" },
+  { id: "results", label: "Results" },
+];
+
+type Phase = "idle" | "auditing" | "done";
+
+function phaseToStep(phase: Phase): number {
+  if (phase === "idle") return 0;
+  if (phase === "auditing") return 1;
+  return 2;
+}
 
 const fetchGitHubData = async (urlOrUsername: string) => {
   const username = urlOrUsername
@@ -18,17 +32,12 @@ const fetchGitHubData = async (urlOrUsername: string) => {
 
   const [userRes, reposRes] = await Promise.all([
     fetch(`https://api.github.com/users/${username}`),
-    fetch(
-      `https://api.github.com/users/${username}/repos?sort=updated&per_page=5`,
-    ),
+    fetch(`https://api.github.com/users/${username}/repos?sort=updated&per_page=5`),
   ]);
 
   if (!userRes.ok) {
-    if (userRes.status === 403 || userRes.status === 429) {
-      throw new Error(
-        "GitHub API rate limit exceeded. Please try again later.",
-      );
-    }
+    if (userRes.status === 403 || userRes.status === 429)
+      throw new Error("GitHub API rate limit exceeded. Please try again later.");
     throw new Error(`GitHub user "${username}" not found`);
   }
 
@@ -39,17 +48,17 @@ const fetchGitHubData = async (urlOrUsername: string) => {
   summary += `Name: ${user.name || "N/A"}\n`;
   summary += `Bio: ${user.bio || "N/A"}\n`;
   summary += `Public Repos: ${user.public_repos}\n`;
-  summary += `Followers: ${user.followers}\n\n`;
-  summary += `Recent Repositories:\n`;
+  summary += `Followers: ${user.followers}\n\nRecent Repositories:\n`;
   for (const repo of repos) {
     summary += `- ${repo.name}: ${repo.description || "No description"} (Stars: ${repo.stargazers_count}, Language: ${repo.language})\n`;
   }
-  return summary;
+  return { summary, user, repos };
 };
 
 export function PortfolioAuditor() {
-  const [isAuditing, setIsAuditing] = useState(false);
+  const [phase, setPhase] = useState<Phase>("idle");
   const [analysis, setAnalysis] = useState<Analysis | null>(null);
+  const [githubUser, setGithubUser] = useState<{ login: string; public_repos: number; followers: number } | null>(null);
 
   const createAnalysisRecord = useMutation(api.analyses.createAnalysisRecord);
   const runAnalysis = useAction(api.analysisActions.runAnalysis);
@@ -59,26 +68,24 @@ export function PortfolioAuditor() {
       ? urlOrUsername
       : `https://github.com/${urlOrUsername}`;
 
-    setIsAuditing(true);
+    setPhase("auditing");
     setAnalysis(null);
 
     try {
-      const githubSummary = await fetchGitHubData(urlOrUsername);
+      const { summary, user } = await fetchGitHubData(urlOrUsername);
+      setGithubUser(user as { login: string; public_repos: number; followers: number });
 
-      const analysisId = await createAnalysisRecord({
-        type: "portfolio_audit",
-        portfolioUrl,
-      });
+      const analysisId = await createAnalysisRecord({ type: "portfolio_audit", portfolioUrl });
 
       const result = await runAnalysis({
         analysisId,
         type: "portfolio_audit",
         portfolioUrl,
-        resumeText: githubSummary,
+        resumeText: summary,
       });
 
       if (!result) throw new Error("Empty result from AI");
-      
+
       const auditResult = result as {
         score: number;
         summary: string;
@@ -100,127 +107,139 @@ export function PortfolioAuditor() {
         completedAt: Date.now(),
       } as unknown as Analysis);
 
+      setPhase("done");
       toast.success("Portfolio audit complete!");
     } catch (error) {
       console.error("[PortfolioAuditor]", error);
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : "Portfolio audit failed.",
-      );
-    } finally {
-      setIsAuditing(false);
+      toast.error(error instanceof Error ? error.message : "Portfolio audit failed.");
+      setPhase("idle");
     }
   };
 
-  return (
-    <div className="mx-auto max-w-[1200px] w-full py-12 px-6 animate-fade-in">
-      {/* ── Page Header ─────────────────────────────────────────────── */}
-      <div className="mb-16 border-b border-border pb-10">
-        <h1 className="text-5xl font-semibold text-primary tracking-tight leading-tight mb-4">
-          Portfolio Auditor
-        </h1>
-        <p className="text-lg text-secondary font-normal max-w-2xl">
-          Analyse your public GitHub profile and repositories for best
-          practices. AI suggests professional README improvements and profile optimization.
-        </p>
-      </div>
-
-      {/* ── Input Section ────────────────────────────────────────────── */}
-      <div className="mx-auto max-w-3xl mb-24">
-        <div className="relative flex flex-col items-center gap-8 text-center">
-          <div className="flex h-20 w-20 items-center justify-center rounded-full bg-surface border border-border/50">
-            <Github className="h-10 w-10 text-accent" strokeWidth={1.5} />
-          </div>
-          <div>
-            <h2 className="text-2xl font-medium text-primary tracking-tight">Audit your GitHub identity</h2>
-            <p className="mt-2 text-secondary font-normal">Enter your username or profile URL below</p>
-          </div>
-          <div className="w-full">
-            <PortfolioInput onSubmit={handleAudit} isLoading={isAuditing} />
-          </div>
+  // ── Step 0: Enter URL ─────────────────────────────────────────────────
+  const stepEnter = (
+    <div className="flex flex-col gap-10">
+      {/* Hero input area */}
+      <div className="flex flex-col items-center text-center gap-6 pt-4">
+        <div className="flex h-14 w-14 items-center justify-center rounded-xl border border-border bg-surface">
+          <Github className="h-7 w-7 text-primary" strokeWidth={1.5} />
+        </div>
+        <div>
+          <h2 className="text-xl font-semibold text-primary tracking-tight">
+            Audit your GitHub identity
+          </h2>
+          <p className="mt-1.5 text-sm text-secondary">
+            Enter your username or profile URL — we'll analyse your repos and profile.
+          </p>
+        </div>
+        <div className="w-full max-w-lg">
+          <PortfolioInput onSubmit={handleAudit} isLoading={false} />
         </div>
       </div>
 
-      {/* ── Results Area ─────────────────────────────────────────────── */}
-      <AnimatePresence mode="wait">
-        {isAuditing && (
-          <motion.div
-            key="loading"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="flex flex-col items-center justify-center gap-8 py-20 text-center"
+      {/* Feature preview cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 border-t border-border pt-8">
+        {[
+          {
+            icon: Users,
+            label: "Profile Audit",
+            desc: "Bio, photo, pinned repos and public links scored for recruiter-readiness.",
+          },
+          {
+            icon: GitBranch,
+            label: "Repo Analysis",
+            desc: "Top 5 repositories evaluated for README quality and tech stack clarity.",
+          },
+          {
+            icon: Star,
+            label: "Action Plan",
+            desc: "Specific, prioritised tips to improve your engineering presence.",
+          },
+        ].map(({ icon: Icon, label, desc }) => (
+          <div
+            key={label}
+            className="rounded-xl border border-border bg-background p-5 flex flex-col gap-3"
           >
-            <div className="relative">
-              <div className="h-24 w-24 rounded-full border border-border flex items-center justify-center">
-                <Loader2 className="h-10 w-10 animate-spin text-accent" strokeWidth={1} />
-              </div>
-              <Activity className="absolute -top-2 -right-2 h-8 w-8 text-accent animate-pulse" strokeWidth={1} />
+            <div className="flex h-8 w-8 items-center justify-center rounded-md border border-border bg-surface">
+              <Icon className="h-4 w-4 text-secondary" strokeWidth={1.5} />
             </div>
             <div>
-              <h2 className="text-3xl font-medium text-primary tracking-tight">Analysing Repositories...</h2>
-              <p className="mt-2 text-secondary font-normal max-w-sm mx-auto">
-                We're fetching your profile data and performing a deep audit of your open-source presence.
-              </p>
+              <p className="text-sm font-semibold text-primary">{label}</p>
+              <p className="mt-1 text-xs text-secondary leading-relaxed">{desc}</p>
             </div>
-            {/* Animated progress bar */}
-            <div className="w-full max-w-xs">
-              <div className="h-1 w-full bg-surface rounded-full overflow-hidden">
-                <motion.div
-                  className="h-full bg-accent"
-                  animate={{ x: ["-100%", "100%"] }}
-                  transition={{ repeat: Infinity, duration: 2, ease: "linear" }}
-                />
-              </div>
-            </div>
-          </motion.div>
-        )}
-
-        {!isAuditing && analysis && (
-          <motion.div
-            key="results"
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0 }}
-            className="flex flex-col gap-12"
-          >
-            <div className="flex items-center justify-between">
-              <h2 className="text-3xl font-medium text-primary tracking-tight">Audit Results</h2>
-              <button
-                onClick={() => setAnalysis(null)}
-                className="flex items-center gap-2 text-sm font-medium text-muted hover:text-accent transition-colors"
-              >
-                <Search className="h-4 w-4" />
-                New Audit
-              </button>
-            </div>
-            <ErrorBoundary>
-              <PortfolioResults analysis={analysis} />
-            </ErrorBoundary>
-          </motion.div>
-        )}
-
-        {!isAuditing && !analysis && (
-          <motion.div
-            key="empty"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="grid grid-cols-1 md:grid-cols-3 gap-8 pt-12 border-t border-border/50"
-          >
-            {[
-              { label: "Profile Audit", desc: "Check your bio, photo, and public links for recruiter-readiness." },
-              { label: "Repo Analysis", desc: "Evaluate your top 5 repositories for README quality and tech stack clarity." },
-              { label: "Action Plan", desc: "Get specific, actionable tips to improve your professional engineering presence." },
-            ].map((item) => (
-              <div key={item.label} className="p-8 rounded-card bg-surface/30 border border-border/20">
-                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted mb-4">{item.label}</p>
-                <p className="text-sm text-secondary leading-relaxed font-normal">{item.desc}</p>
-              </div>
-            ))}
-          </motion.div>
-        )}
-      </AnimatePresence>
+          </div>
+        ))}
+      </div>
     </div>
+  );
+
+  // ── Step 1: Auditing ──────────────────────────────────────────────────
+  const stepAuditing = (
+    <div className="flex flex-col items-center justify-center gap-8 py-20 text-center">
+      <div className="relative">
+        <div className="h-20 w-20 rounded-full border border-border bg-surface flex items-center justify-center">
+          <Loader2 className="h-9 w-9 animate-spin text-primary" strokeWidth={1} />
+        </div>
+        <Activity
+          className="absolute -top-2 -right-2 h-7 w-7 text-primary animate-pulse"
+          strokeWidth={1}
+        />
+      </div>
+      <div>
+        <h2 className="text-2xl font-semibold text-primary tracking-tight">
+          Analysing Repositories…
+        </h2>
+        <p className="mt-2 text-secondary text-sm max-w-sm mx-auto">
+          Fetching your profile data and performing a deep audit of your open-source presence.
+        </p>
+        {githubUser && (
+          <p className="mt-3 text-xs font-mono text-muted">
+            @{githubUser.login} · {githubUser.public_repos} repos · {githubUser.followers} followers
+          </p>
+        )}
+      </div>
+      {/* Animated progress shimmer */}
+      <div className="w-48 h-0.5 rounded-full bg-border overflow-hidden">
+        <div
+          className="h-full bg-primary rounded-full"
+          style={{
+            width: "40%",
+            animation: "slideProgress 1.8s ease-in-out infinite",
+          }}
+        />
+      </div>
+    </div>
+  );
+
+  // ── Step 2: Results ───────────────────────────────────────────────────
+  const stepResults = (
+    <div className="flex flex-col gap-6">
+      <div className="flex items-center justify-between">
+        <h2 className="text-base font-semibold text-primary">Audit Results</h2>
+        <button
+          onClick={() => { setAnalysis(null); setPhase("idle"); }}
+          className="flex items-center gap-1.5 text-sm font-medium text-muted hover:text-primary transition-colors"
+        >
+          <Github className="h-3.5 w-3.5" />
+          New Audit
+        </button>
+      </div>
+      {analysis && (
+        <ErrorBoundary>
+          <PortfolioResults analysis={analysis} />
+        </ErrorBoundary>
+      )}
+    </div>
+  );
+
+  return (
+    <StepWizard
+      title="Portfolio Auditor"
+      subtitle="AI-powered GitHub profile and repository analysis."
+      steps={WIZARD_STEPS}
+      currentStep={phaseToStep(phase)}
+    >
+      {[stepEnter, stepAuditing, stepResults]}
+    </StepWizard>
   );
 }

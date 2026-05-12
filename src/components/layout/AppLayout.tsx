@@ -33,7 +33,7 @@ export function AppLayout() {
   }, [isLoaded, isSignedIn, user?.id]);
 
   return (
-    <div className="relative min-h-screen bg-[#0D0D12] text-[#F2EFE9] selection:bg-[#D4A574]/20 selection:text-[#D4A574] noise-overlay">
+    <div className="relative min-h-screen bg-background text-primary selection:bg-accent/10 selection:text-primary">
       {/* ── Sticky top navigation ─────────────────────────────────────── */}
       <TopNav />
 

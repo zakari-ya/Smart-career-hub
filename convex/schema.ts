@@ -170,4 +170,31 @@ export default defineSchema({
     type: v.string(),
     createdAt: v.number(),
   }).index("by_hash", ["contentHash"]),
+
+  analysisPipeline: defineTable({
+    resumeId: v.id("resumes"),
+    userId: v.id("users"),
+    clerkId: v.string(),
+    phase1: v.object({
+      status: v.union(v.literal("pending"), v.literal("processing"), v.literal("completed"), v.literal("failed")),
+      data: v.optional(v.any()),
+      error: v.optional(v.string()),
+      completedAt: v.optional(v.number()),
+    }),
+    phase2: v.object({
+      status: v.union(v.literal("pending"), v.literal("processing"), v.literal("completed"), v.literal("failed")),
+      data: v.optional(v.any()),
+      error: v.optional(v.string()),
+      completedAt: v.optional(v.number()),
+    }),
+    phase3: v.object({
+      status: v.union(v.literal("pending"), v.literal("processing"), v.literal("completed"), v.literal("failed")),
+      data: v.optional(v.any()),
+      error: v.optional(v.string()),
+      completedAt: v.optional(v.number()),
+    }),
+    overallStatus: v.union(v.literal("processing"), v.literal("completed"), v.literal("failed")),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }).index("by_resume", ["resumeId"]),
 });

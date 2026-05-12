@@ -13,12 +13,12 @@ export function TopNavbar() {
     <header className="fixed top-0 left-0 right-0 z-50 h-16 bg-white border-b border-border flex items-center px-6 lg:px-12">
       <div className="flex-1 flex items-center justify-between max-w-[1400px] mx-auto w-full">
         {/* Left: Logo */}
-        <Link to="/" className="flex items-center gap-2 group">
-          <div className="h-8 w-8 flex items-center justify-center rounded-sm bg-accent/5 border border-accent/10 text-accent group-hover:scale-105 transition-transform">
-            <Briefcase className="h-5 w-5" strokeWidth={1.5} />
-          </div>
-          <span className="text-xl font-semibold text-primary tracking-tight">
+        <Link to="/" className="flex items-center flex-col gap-1 group">
+          <span className="text-sm font-bold uppercase tracking-[0.3em] text-accent">
             Smart Career
+          </span>
+          <span className="text-xs font-medium text-muted tracking-widest">
+            HUB / INTELLIGENCE
           </span>
         </Link>
 

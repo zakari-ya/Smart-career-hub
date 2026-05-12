@@ -72,7 +72,7 @@ export function Settings() {
   };
 
   return (
-    <div className="flex flex-col animate-fade-in">
+    <div className="flex flex-col animate-fade-in p-12">
       {/* Header */}
       <header className="mb-12">
         <div className="flex items-center gap-2 mb-4">

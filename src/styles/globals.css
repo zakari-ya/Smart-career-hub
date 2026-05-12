@@ -14,13 +14,14 @@
   --color-success: var(--success);
   --color-error: var(--error);
 
-  --font-sans: "Inter", system-ui, sans-serif;
-  --font-mono: "JetBrains Mono", monospace;
+  --font-sans: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  --font-mono: ui-monospace, "Monaco", "Courier New", monospace;
+  --font-display: -apple-system, BlinkMacSystemFont, "SF Pro Rounded", "Segoe UI", sans-serif;
 
-  --radius-button: 9999px;
+  --radius-button: 8px;
   --radius-card: 12px;
-  --radius-input: 8px;
-  --radius-table: 0px;
+  --radius-input: 9999px;
+  --radius-pill: 9999px;
 
   --animate-fade-in: fadeIn 0.15s ease-out;
   --animate-slide-up: slideUp 0.2s ease-out;
@@ -28,15 +29,21 @@
 
 @layer base {
   :root {
+    /* ── Ollama Minimalist Palette ─────────────────────────────────────
+       White background · Black text · Grey accents · Zero blue
+    ──────────────────────────────────────────────────────────────────── */
     --bg: #FFFFFF;
-    --bg-surface: #F5F5F5;
+    --bg-surface: #F9F9F9;
     --text-primary: #0A0A0A;
-    --text-secondary: #737373;
+    --text-secondary: #525252;
     --text-muted: #A3A3A3;
     --border: #E5E5E5;
-    --accent: #171717;
-    --success: #22C55E;
-    --error: #EF4444;
+    --accent: #171717;          /* near-black — replaces blue everywhere */
+    --accent-subtle: #F5F5F5;  /* hover state for accent elements */
+    --success: #16A34A;
+    --error: #DC2626;
+    --warning: #CA8A04;
+    --dark-surface: #171717;
   }
 
   *, *::before, *::after {
@@ -51,19 +58,14 @@
   body {
     background-color: var(--bg);
     color: var(--text-primary);
-    font-family: "Inter", system-ui, sans-serif;
+    font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    line-height: 1.6;
+    line-height: 24px;
     overflow-x: hidden;
   }
 
-  /* Editorial Whitespace Focus */
-  main {
-    @apply transition-all duration-300;
-  }
-
-  /* Noise Texture Overlay */
+  /* Very subtle noise texture — keep at 2% so it doesn't dominate */
   body::before {
     content: "";
     position: fixed;
@@ -71,8 +73,8 @@
     left: 0;
     width: 100%;
     height: 100%;
-    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3%3Ffilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
-    opacity: 0.03;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+    opacity: 0.02;
     pointer-events: none;
     z-index: 9999;
   }
@@ -80,20 +82,19 @@
   h1, h2, h3, h4, h5, h6 {
     font-weight: 600;
     letter-spacing: -0.025em;
-    line-height: 1.1;
     color: var(--text-primary);
   }
 
   :focus-visible {
-    outline: 2px solid var(--accent);
+    outline: 2px solid rgba(0, 0, 0, 0.12);
     outline-offset: 2px;
-    border-radius: 4px;
+    border-color: var(--accent);
   }
 
   /* Monospace for code elements */
   code, pre {
-    font-family: "JetBrains Mono", monospace;
-    font-size: 0.875rem;
+    font-family: var(--font-mono);
+    font-size: 13px;
   }
 }
 
@@ -104,8 +105,7 @@
 
   .nav-active {
     color: var(--text-primary);
-    border-left: 2px solid var(--accent);
-    background-color: rgba(0, 0, 0, 0.02);
+    border-bottom: 2px solid var(--text-primary);
   }
 
   .skeleton {
@@ -117,6 +117,19 @@
   @keyframes pulse {
     0%, 100% { opacity: 1; }
     50% { opacity: .5; }
+  }
+
+  /* StepWizard progress shimmer */
+  @keyframes slideProgress {
+    0%   { transform: translateX(-100%); }
+    50%  { transform: translateX(150%); }
+    100% { transform: translateX(150%); }
+  }
+
+  /* TopNav mobile drawer slide-in from right */
+  @keyframes slideInRight {
+    from { transform: translateX(100%); }
+    to   { transform: translateX(0); }
   }
 
   /* Single-page integration helper */
