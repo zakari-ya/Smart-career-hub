@@ -91,7 +91,7 @@ export function JobMatcher() {
         }
         const ai = result.analysis as AIMatchResult;
         setAnalysis({
-          _id: "temp", userId: "temp", clerkId: "temp",
+          _id: "temp", userId: "temp", authUserId: "temp",
           createdAt: Date.now(), status: "completed", type: "job_match", aiModel: "gpt-4o",
           result: {
             score: ai.matchScore ?? 0,

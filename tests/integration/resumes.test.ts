@@ -7,6 +7,11 @@ import { api } from "../../convex/_generated/api";
 const modules = import.meta.glob("../../convex/**/*.ts");
 
 describe("Resumes Integration Tests", () => {
+  const userIdentity = (tokenIdentifier: string, subject?: string) => ({
+    tokenIdentifier,
+    subject: subject ?? tokenIdentifier,
+  });
+
   it("should return null for unauthenticated users (no auth token)", async () => {
     // getMyResumes returns null (not throws) for unauthenticated callers —
     // both are valid per RULE-S4: "Return null or throw".
@@ -22,7 +27,7 @@ describe("Resumes Integration Tests", () => {
     // Create a mock user in the DB
     const userId = await t.run(async (ctx) => {
       return await ctx.db.insert("users", {
-        clerkId: "user_123",
+        authUserId: "user_123",
         email: "test@example.com",
         name: "Test User",
         role: "user",
@@ -33,7 +38,7 @@ describe("Resumes Integration Tests", () => {
     });
 
     // Mock authentication
-    const tAuthed = t.withIdentity({ subject: "user_123" });
+    const tAuthed = t.withIdentity(userIdentity("user_123"));
 
     // Fetch resumes (should be empty initially)
     const resumes = await tAuthed.query(api.resumes.getMyResumes, {});
@@ -43,7 +48,7 @@ describe("Resumes Integration Tests", () => {
     await t.run(async (ctx) => {
       await ctx.db.insert("resumes", {
         userId,
-        clerkId: "user_123",
+        authUserId: "user_123",
         title: "Test Resume",
         fileType: "pdf",
         fileSize: 1024,
@@ -68,7 +73,7 @@ describe("Resumes Integration Tests", () => {
     // Create User A
     const userAId = await t.run(async (ctx) => {
       return await ctx.db.insert("users", {
-        clerkId: "user_A",
+        authUserId: "user_A",
         email: "a@example.com",
         name: "User A",
         role: "user",
@@ -81,7 +86,7 @@ describe("Resumes Integration Tests", () => {
     // Create User B
     await t.run(async (ctx) => {
       return await ctx.db.insert("users", {
-        clerkId: "user_B",
+        authUserId: "user_B",
         email: "b@example.com",
         name: "User B",
         role: "user",
@@ -95,7 +100,7 @@ describe("Resumes Integration Tests", () => {
     await t.run(async (ctx) => {
       await ctx.db.insert("resumes", {
         userId: userAId,
-        clerkId: "user_A",
+        authUserId: "user_A",
         title: "Resume A",
         fileType: "pdf",
         fileSize: 1024,
@@ -106,12 +111,100 @@ describe("Resumes Integration Tests", () => {
     });
 
     // Authenticate as User B
-    const tAuthedB = t.withIdentity({ subject: "user_B" });
+    const tAuthedB = t.withIdentity(userIdentity("user_B"));
 
     // User B should not see User A's resume — BOLA isolation check
     const resumesB = await tAuthedB.query(api.resumes.getMyResumes, {});
     // Authenticated as User B, so result is an array (not null)
     expect(resumesB).not.toBeNull();
     expect(resumesB).toHaveLength(0);
+  });
+
+  it("should block updateExtractedText for a resume owned by another user", async () => {
+    const t = convexTest(schema, modules);
+
+    const userId = await t.run(async (ctx) => {
+      return await ctx.db.insert("users", {
+        authUserId: "user_owner",
+        email: "owner@example.com",
+        name: "Owner",
+        role: "user",
+        isPro: false,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      });
+    });
+
+    const resumeId = await t.run(async (ctx) => {
+      return await ctx.db.insert("resumes", {
+        userId,
+        authUserId: "user_owner",
+        title: "Locked Resume",
+        fileType: "pdf",
+        fileSize: 2048,
+        isArchived: false,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      });
+    });
+
+    const attacker = t.withIdentity(userIdentity("user_attacker"));
+
+    await expect(
+      attacker.mutation(api.resumes.updateExtractedText, {
+        resumeId,
+        text: "stolen text",
+      }),
+    ).rejects.toThrow("Forbidden");
+  });
+
+  it("should not return a pipeline for a resume owned by another user", async () => {
+    const t = convexTest(schema, modules);
+
+    const ownerId = await t.run(async (ctx) => {
+      return await ctx.db.insert("users", {
+        authUserId: "user_owner",
+        email: "owner@example.com",
+        name: "Owner",
+        role: "user",
+        isPro: false,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      });
+    });
+
+    const resumeId = await t.run(async (ctx) => {
+      return await ctx.db.insert("resumes", {
+        userId: ownerId,
+        authUserId: "user_owner",
+        title: "Owner Resume",
+        fileType: "pdf",
+        fileSize: 2048,
+        isArchived: false,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      });
+    });
+
+    await t.run(async (ctx) => {
+      await ctx.db.insert("analysisPipeline", {
+        resumeId,
+        userId: ownerId,
+        authUserId: "user_owner",
+        phase1: { status: "completed", data: "text" },
+        phase2: { status: "pending" },
+        phase3: { status: "pending" },
+        overallStatus: "processing",
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      });
+    });
+
+    const attacker = t.withIdentity(userIdentity("user_attacker"));
+    const pipeline = await attacker.query(api.analyzePipeline.getPipelineByResume, {
+      resumeId,
+    });
+
+    expect(pipeline).toBeNull();
   });
 });

@@ -1,13 +1,14 @@
 import { Link } from "react-router-dom";
-import { Briefcase, Menu, X } from "lucide-react";
-import { SignedIn, SignedOut } from "@clerk/clerk-react";
+import { Menu, X } from "lucide-react";
 import { Button } from "../ui/button";
 import { AvatarDropdown } from "../ui/AvatarDropdown";
 import { NavDropdown } from "../ui/NavDropdown";
 import { useState } from "react";
+import { useAppAuth } from "../../hooks/useAppAuth";
 
 export function TopNavbar() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const { isSignedIn } = useAppAuth();
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 h-16 bg-white border-b border-border flex items-center px-6 lg:px-12">
@@ -43,14 +44,13 @@ export function TopNavbar() {
 
         {/* Right: Auth / Avatar */}
         <div className="flex items-center gap-4">
-          <SignedIn>
+          {isSignedIn ? (
             <AvatarDropdown />
-          </SignedIn>
-          <SignedOut>
+          ) : (
             <Button asChild variant="default" size="sm" className="h-9 px-5">
               <Link to="/sign-in">Sign In</Link>
             </Button>
-          </SignedOut>
+          )}
 
           {/* Mobile Hamburger */}
           <button 
@@ -86,11 +86,11 @@ export function TopNavbar() {
           </nav>
           
           <div className="pt-6 border-t border-border/30">
-            <SignedOut>
+            {!isSignedIn && (
               <Button asChild className="w-full">
                 <Link to="/sign-up">Get Started</Link>
               </Button>
-            </SignedOut>
+            )}
           </div>
         </div>
       )}

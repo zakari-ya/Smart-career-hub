@@ -3,8 +3,10 @@
 import { v } from "convex/values";
 import { action } from "./_generated/server";
 import { api, internal } from "./_generated/api";
+import { getAuthenticatedIdentity, getAuthUserId } from "./lib/auth";
 import { callOpenRouter } from "./lib/openrouter";
 import { validateExtraction } from "./lib/parser";
+import { normalizeStoredAnalysisResult } from "./lib/validators";
 
 export const runAnalysis = action({
   args: {
@@ -19,14 +21,14 @@ export const runAnalysis = action({
     ),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Unauthorized");
+    const identity = await getAuthenticatedIdentity(ctx);
+    const authUserId = getAuthUserId(identity);
 
     // Rate limit check
     const rateLimitRes = await ctx.runMutation(
       internal.lib.rateLimiter.consumeRateLimit,
       {
-        userId: identity.subject,
+        userId: authUserId,
         resource: "analysis",
         maxCount: 10,
         windowMs: 3600000,
@@ -70,9 +72,7 @@ export const runAnalysis = action({
                 const mimeType =
                   resume.fileType === "pdf"
                     ? "application/pdf"
-                    : resume.fileType === "docx"
-                      ? "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                      : "text/plain";
+                    : "text/plain";
 
                 const { extractText } = await import("./lib/parser");
                 analysisText = await extractText(buffer, mimeType);
@@ -262,14 +262,19 @@ OUTPUT FORMAT — Return ONLY a valid JSON object. No markdown, no explanations 
         return { error: "Analysis format error. Please try again." };
       }
 
+      const normalizedResult = normalizeStoredAnalysisResult(
+        args.type,
+        parsedResult,
+      );
+
       // 5. Success -> Update DB
       await ctx.runMutation(internal.analyses.updateAnalysisStatus, {
         analysisId: args.analysisId,
         status: "completed",
-        result: parsedResult,
+        result: normalizedResult,
       });
 
-      return parsedResult;
+      return normalizedResult;
     } catch (err: unknown) {
       console.error("[runAnalysis Error]:", err);
       await ctx.runMutation(internal.analyses.updateAnalysisStatus, {

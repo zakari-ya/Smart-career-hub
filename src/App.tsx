@@ -6,14 +6,11 @@ import {
   Outlet,
   useLocation,
 } from "react-router-dom";
-import { AuthProvider } from "./lib/clerk";
+import { AuthProvider } from "./lib/auth";
+import { useAppAuth } from "./hooks/useAppAuth";
 import { Toaster } from "sonner";
 import { Sidebar } from "./components/layout/Sidebar";
-import { useAuth, useUser, SignIn, SignUp } from "@clerk/clerk-react";
 import { ErrorBoundary } from "./components/ui/ErrorBoundary";
-import { useEffect } from "react";
-import { useMutation } from "convex/react";
-import { api } from "../convex/_generated/api";
 import { cn } from "./lib/utils";
 
 // Pages
@@ -23,13 +20,15 @@ import { ResumeScanner } from "./pages/ResumeScanner";
 import { PortfolioAuditor } from "./pages/PortfolioAuditor";
 import { JobMatcher } from "./pages/JobMatcher";
 import { Settings } from "./pages/Settings";
+import { SignIn } from "./pages/SignIn";
+import { SignUp } from "./pages/SignUp";
 
 function ProtectedRoute({
   children,
 }: {
   readonly children: React.ReactNode;
 }): React.ReactElement {
-  const { isLoaded, isSignedIn } = useAuth();
+  const { isLoaded, isSignedIn } = useAppAuth();
 
   if (!isLoaded) {
     return (
@@ -53,26 +52,11 @@ import { MobileNav } from "./components/layout/MobileNav";
 import { TopNavbar } from "./components/layout/TopNavbar";
 
 function RootLayout() {
-  const { isLoaded, isSignedIn } = useAuth();
-  const { user } = useUser();
   const location = useLocation();
-  const syncUser = useMutation(api.auth.syncUser);
 
   const isLandingPage = location.pathname === "/";
   const isAuthPage = location.pathname.startsWith("/sign-in") || location.pathname.startsWith("/sign-up");
   const isAppRoute = !isLandingPage && !isAuthPage;
-
-  useEffect(() => {
-    if (isLoaded && isSignedIn && user) {
-      syncUser({
-        email: user.primaryEmailAddress?.emailAddress ?? "",
-        name: user.fullName ?? user.firstName ?? "User",
-        avatarUrl: user.imageUrl ?? undefined,
-      }).catch((err: unknown) => {
-        console.error("[syncUser] Failed to sync user to Convex:", err);
-      });
-    }
-  }, [isLoaded, isSignedIn, user, syncUser]);
 
   return (
     <div className="flex min-h-screen bg-background text-primary selection:bg-accent/20 selection:text-accent">
@@ -129,7 +113,7 @@ function App(): React.ReactElement {
                 path="/sign-in/*"
                 element={
                   <div className="flex min-h-[calc(100vh-4rem)] items-center justify-center p-4">
-                    <SignIn routing="path" path="/sign-in" />
+                    <SignIn />
                   </div>
                 }
               />
@@ -137,7 +121,7 @@ function App(): React.ReactElement {
                 path="/sign-up/*"
                 element={
                   <div className="flex min-h-[calc(100vh-4rem)] items-center justify-center p-4">
-                    <SignUp routing="path" path="/sign-up" />
+                    <SignUp />
                   </div>
                 }
               />

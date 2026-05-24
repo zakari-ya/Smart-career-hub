@@ -3,6 +3,7 @@
 import { v } from "convex/values";
 import { action } from "./_generated/server";
 import { validateExtraction } from "./lib/parser";
+import { validateResumeUpload } from "./lib/resumeUpload";
 
 /**
  * PHASE 1: Fast Text Extraction
@@ -12,31 +13,38 @@ export const extractText = action({
   args: {
     fileBase64: v.string(), // Base64 encoded file content
     fileName: v.string(),
-    fileType: v.string(), // "pdf", "docx", "txt", "md"
+    fileType: v.string(), // "pdf", "txt", "md"
     storageId: v.optional(v.id("_storage")),
     resumeId: v.optional(v.id("resumes")),
   },
   handler: async (ctx, args) => {
     try {
       let buffer: Buffer;
+      let fileSize = 0;
 
       // 1. Get file content (either from base64 or from Convex storage)
       if (args.fileBase64 && args.fileBase64.length > 0) {
         buffer = Buffer.from(args.fileBase64, "base64");
+        fileSize = buffer.length;
       } else if (args.storageId) {
         const fileData = await ctx.storage.get(args.storageId);
         if (!fileData) {
           return { success: false, error: "File not found in storage." };
         }
         buffer = Buffer.from(await fileData.arrayBuffer());
+        fileSize = buffer.length;
       } else {
         return { success: false, error: "No file content or storage ID provided." };
       }
+
+      validateResumeUpload({
+        fileType: args.fileType,
+        fileSize,
+      });
       
       // 2. Determine MIME type
       let mimeType = "text/plain";
       if (args.fileType === "pdf") mimeType = "application/pdf";
-      if (args.fileType === "docx") mimeType = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
 
       // 3. Extract text using our library
       const { extractText: parseFile } = await import("./lib/parser");
@@ -64,7 +72,7 @@ export const extractText = action({
       console.error("[Extraction Error]:", err);
       return { 
         success: false, 
-        error: "Failed to read file. Please ensure it's a valid PDF or Word document." 
+        error: "Failed to read file. Please ensure it's a valid PDF, TXT, or Markdown file." 
       };
     }
   },

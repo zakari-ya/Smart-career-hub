@@ -125,9 +125,9 @@ export function Landing() {
           
           <ul className="flex flex-col gap-4">
             {[
-              "End-to-end encryption for all documents",
-              "Local processing options for privacy",
-              "No permanent storage without consent"
+              "AI requests run server-side through Convex actions",
+              "Resume uploads are scoped to your signed-in account",
+              "Offline uploads queue locally until you reconnect"
             ].map((text) => (
               <li key={text} className="flex items-center gap-4 text-secondary font-medium">
                 <div className="h-1.5 w-1.5 rounded-full bg-accent" />

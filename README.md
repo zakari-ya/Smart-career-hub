@@ -1,10 +1,10 @@
-# Smart Career Hub 🚀
+# Smart Career Hub
 
 **Smart Career Hub** is a production-grade, AI-powered Progressive Web App (PWA) designed to provide career intelligence. It serves as a comprehensive toolkit for developers and professionals, offering features like a resume scanner, portfolio auditor, and intelligent job matcher.
 
 Built with a strict **Security-First Engineering** mandate, this project demonstrates senior-level architectural practices, offline-first capabilities, and premium editorial design.
 
-🌐 **Live Demo:** [Smart Career Hub on Vercel](#) *(Replace with actual Vercel URL)*
+🌐 **Live Demo:** [Smart Career Hub on Vercel](#)
 
 ---
 
@@ -36,7 +36,7 @@ We've chosen a modern, high-performance stack optimized for developer experience
 
 ### Backend & Infrastructure
 - **Database & Serverless Logic:** Convex (Database, Functions, File Storage, Scheduler)
-- **Authentication:** Clerk (JWT-based, social login, secure session management)
+- **Authentication:** Better Auth on Convex (email/password, Google, GitHub)
 - **AI Gateway:** OpenRouter API
 - **Hosting:** Vercel (Frontend) + Convex (Backend)
 
@@ -54,9 +54,9 @@ Security is not an afterthought; it is a fundamental design constraint of this p
 
 1. **Zero Client-Side AI Calls:** External AI APIs (OpenRouter) are never called directly from the browser. All requests securely route through Convex server actions.
 2. **Implicit Trust Denial:** `userId` is never trusted from the client. Identity is exclusively derived from `ctx.auth.getUserIdentity()` inside Convex functions.
-3. **Secret Management:** Clerk tokens and OpenRouter keys are strictly managed via environment variables and never exposed to the client bundle.
-4. **Strict Authorization (BOLA Prevention):** Every Convex query and mutation verifies authentication and strictly checks document ownership (`doc.userId === authUser.subject`) before execution.
-5. **Robust Validation & Sanitization:** All user inputs (text, files) are validated server-side using Convex validators and Zod schemas. AI-generated HTML is sanitized using DOMPurify before rendering.
+3. **Secret Management:** Better Auth secrets, provider credentials, and OpenRouter keys are strictly managed via environment variables and never exposed to the client bundle.
+4. **Strict Authorization (BOLA Prevention):** Every Convex query and mutation verifies authentication and strictly checks document ownership using the authenticated identity token identifier before execution.
+5. **Robust Validation:** All user inputs (text, files) are validated server-side using Convex validators and Zod schemas. Resume uploads are limited to PDF, TXT, and Markdown files up to 5MB.
 6. **Rate Limiting:** Mandatory rate limiting is enforced on all AI endpoints to prevent abuse.
 
 ---
@@ -68,7 +68,9 @@ smart-career-hub/
 ├── AGENTS.md                 # Engineering guidelines and rules
 ├── convex/                   # Backend — ALL server logic lives here
 │   ├── schema.ts             # Convex database schema
-│   ├── auth.ts               # Clerk JWT integration
+│   ├── auth.ts               # App-user sync + authenticated user helpers
+│   ├── betterAuthAuth.ts     # Better Auth server configuration
+│   ├── http.ts               # Better Auth HTTP routes for Convex
 │   ├── resumes.ts            # Resume CRUD + storage
 │   ├── analyses.ts           # AI analysis orchestration
 │   └── lib/                  # Utilities (OpenRouter, Rate Limiter, Validators)
@@ -92,7 +94,7 @@ Follow these instructions to set up the project locally.
 ### Prerequisites
 - Node.js (v20+)
 - npm or pnpm
-- Accounts for [Convex](https://convex.dev/), [Clerk](https://clerk.com/), and [OpenRouter](https://openrouter.ai/)
+- Accounts for [Convex](https://convex.dev/), [OpenRouter](https://openrouter.ai/), [Google Cloud](https://console.cloud.google.com/), and [GitHub Developer Settings](https://github.com/settings/developers)
 
 ### 1. Clone the repository
 ```bash
@@ -109,13 +111,25 @@ npm install
 Create `.env.local` in the root directory for frontend variables:
 ```env
 VITE_CONVEX_URL=your_convex_deployment_url
-VITE_CLERK_PUBLISHABLE_KEY=your_clerk_publishable_key
+VITE_CONVEX_SITE_URL=your_convex_site_url
+CONVEX_SITE_URL=your_convex_site_url
 ```
 
 Configure the following secrets in your **Convex Dashboard** under Settings > Environment Variables:
-- `CLERK_JWT_ISSUER_DOMAIN`
+- `BETTER_AUTH_SECRET`
+- `SITE_URL`
+- `GOOGLE_CLIENT_ID`
+- `GOOGLE_CLIENT_SECRET`
+- `GITHUB_CLIENT_ID`
+- `GITHUB_CLIENT_SECRET`
 - `OPENROUTER_API_KEY`
 - `OPENROUTER_HTTP_REFERER` (Your domain, e.g., http://localhost:5173 for local dev)
+
+How to get them:
+- `BETTER_AUTH_SECRET`: run `openssl rand -base64 32`
+- `SITE_URL`: your canonical app URL, such as `https://your-app.vercel.app`
+- `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET`: create a Google OAuth Web App and add callbacks for `http://localhost:5173/api/auth/callback/google` and `https://your-domain/api/auth/callback/google`
+- `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET`: create a GitHub OAuth App and add callbacks for `http://localhost:5173/api/auth/callback/github` and `https://your-domain/api/auth/callback/github`
 
 ### 4. Start the Development Servers
 You need to run both the Vite frontend and the Convex backend simultaneously.
@@ -159,12 +173,14 @@ npm run test:e2e
 
 ## 🚢 Deployment
 
-The frontend of this application is configured to be seamlessly deployed on **Vercel**, while the backend is hosted on **Convex**.
+The frontend is configured for **Vercel**, while the backend and auth routes are hosted on **Convex**.
 
 1. Connect your GitHub repository to Vercel.
 2. Ensure the Build Command is `npm run build` and the Output Directory is `dist`.
-3. Add the `VITE_CLERK_PUBLISHABLE_KEY` and `VITE_CONVEX_URL` to your Vercel Environment Variables.
-4. For Convex, ensure your production environment variables are properly configured in the Convex Dashboard and run `npx convex deploy` to deploy your backend functions.
+3. Add `VITE_CONVEX_URL` and `CONVEX_SITE_URL` to Vercel Environment Variables.
+4. The repo includes `vercel.json` for SPA deep-link rewrites and `api/auth/[...path].ts` to proxy Better Auth routes through the app domain.
+5. In Convex, configure the production environment variables listed above and run `npx convex deploy`.
+6. Social login is intended for localhost and the production domain. Preview deployments on `*.vercel.app` should use email/password sign-in.
 
 ---
 *Built with precision, security, and aesthetics in mind.*

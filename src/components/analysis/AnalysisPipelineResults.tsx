@@ -1,9 +1,10 @@
 import { Doc } from "../../../convex/_generated/dataModel";
-import { CheckCircle2, Circle, AlertCircle, Loader2, Star, Zap, Search, ArrowRight, Sparkles } from "lucide-react";
+import { CheckCircle2, Circle, AlertCircle, Loader2, Star, Zap, Search, ArrowRight, Sparkles } from "lucide-react"; // Loader2 kept for PhaseBadge spinner
 import { cn } from "../../lib/utils";
 import { StaggerContainer } from "../animations/StaggerContainer";
 import { AnimatedCard } from "../animations/AnimatedCard";
 import { ScoreCircle } from "../animations/ScoreCircle";
+import { AIThinkingAnimation } from "../animations/AIThinkingAnimation";
 
 interface Props {
   pipeline: Doc<"analysisPipeline">;
@@ -71,7 +72,7 @@ export function AnalysisPipelineResults({ pipeline }: Props) {
                 </span>
               </div>
             ) : phase2.status === "processing" ? (
-              <LoadingState text="Calculating score..." />
+              <AIThinkingAnimation text="Calculating score..." />
             ) : phase2.status === "failed" ? (
               <ErrorMessage error={phase2.error || "Scan failed."} />
             ) : (
@@ -105,7 +106,7 @@ export function AnalysisPipelineResults({ pipeline }: Props) {
                 </div>
               </div>
             ) : phase1.status === "processing" ? (
-              <LoadingState text="Validating structure..." />
+              <AIThinkingAnimation text="Validating structure..." />
             ) : phase1.status === "failed" ? (
               <ErrorMessage error={phase1.error || "Structure validation failed."} />
             ) : (
@@ -221,7 +222,7 @@ export function AnalysisPipelineResults({ pipeline }: Props) {
                 )}
               </div>
             ) : phase3.status === "processing" ? (
-              <LoadingState text="Performing deep semantic analysis..." />
+              <AIThinkingAnimation text="Performing deep semantic analysis..." />
             ) : phase3.status === "failed" ? (
               <ErrorMessage error={phase3.error || "Deep audit failed."} />
             ) : (
@@ -256,18 +257,7 @@ function PhaseBadge({ phase, status }: { phase: string; status: string }) {
   );
 }
 
-function LoadingState({ text }: { text: string }) {
-  return (
-    <div className="w-full h-48 flex flex-col items-center justify-center border border-border/50 bg-surface/50 rounded-xl gap-4">
-      <div className="relative">
-        <div className="w-12 h-12 rounded-full border border-border/50 bg-background flex items-center justify-center">
-          <Loader2 className="w-6 h-6 animate-spin text-accent" />
-        </div>
-      </div>
-      <p className="text-sm font-mono text-muted">{text}</p>
-    </div>
-  );
-}
+// LoadingState removed — replaced by AIThinkingAnimation
 
 function ErrorMessage({ error }: { error: string }) {
   return (

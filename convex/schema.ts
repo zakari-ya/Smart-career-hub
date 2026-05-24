@@ -3,7 +3,7 @@ import { v } from "convex/values";
 
 export default defineSchema({
   users: defineTable({
-    clerkId: v.string(),
+    authUserId: v.string(),
     email: v.string(),
     name: v.string(),
     avatarUrl: v.optional(v.string()),
@@ -14,12 +14,12 @@ export default defineSchema({
     createdAt: v.number(),
     updatedAt: v.number(),
   })
-    .index("by_clerk_id", ["clerkId"])
+    .index("by_auth_user_id", ["authUserId"])
     .index("by_email", ["email"]),
 
   resumes: defineTable({
     userId: v.id("users"),
-    clerkId: v.string(),
+    authUserId: v.string(),
     title: v.string(),
     fileStorageId: v.optional(v.id("_storage")),
     extractedText: v.optional(v.string()),
@@ -27,7 +27,6 @@ export default defineSchema({
       v.literal("pdf"),
       v.literal("txt"),
       v.literal("md"),
-      v.literal("docx"),
     ),
     fileSize: v.number(),
     isArchived: v.boolean(),
@@ -35,12 +34,12 @@ export default defineSchema({
     updatedAt: v.number(),
   })
     .index("by_user", ["userId", "createdAt"])
-    .index("by_clerk_id", ["clerkId", "createdAt"])
+    .index("by_auth_user_id", ["authUserId", "createdAt"])
     .index("by_storage", ["fileStorageId"]),
 
   analyses: defineTable({
     userId: v.id("users"),
-    clerkId: v.string(),
+    authUserId: v.string(),
     resumeId: v.optional(v.id("resumes")),
     portfolioUrl: v.optional(v.string()),
     jobDescription: v.optional(v.string()),
@@ -72,13 +71,13 @@ export default defineSchema({
     completedAt: v.optional(v.number()),
   })
     .index("by_user", ["userId", "createdAt"])
-    .index("by_clerk_id", ["clerkId", "createdAt"])
+    .index("by_auth_user_id", ["authUserId", "createdAt"])
     .index("by_resume", ["resumeId", "createdAt"])
     .index("by_status", ["status", "createdAt"]),
 
   jobTrackers: defineTable({
     userId: v.id("users"),
-    clerkId: v.string(),
+    authUserId: v.string(),
     company: v.string(),
     role: v.string(),
     jobUrl: v.optional(v.string()),
@@ -98,7 +97,7 @@ export default defineSchema({
     updatedAt: v.number(),
   })
     .index("by_user", ["userId", "createdAt"])
-    .index("by_clerk_id", ["clerkId", "createdAt"])
+    .index("by_auth_user_id", ["authUserId", "createdAt"])
     .index("by_status", ["userId", "status"]),
 
   guestSessions: defineTable({
@@ -174,7 +173,7 @@ export default defineSchema({
   analysisPipeline: defineTable({
     resumeId: v.id("resumes"),
     userId: v.id("users"),
-    clerkId: v.string(),
+    authUserId: v.string(),
     phase1: v.object({
       status: v.union(v.literal("pending"), v.literal("processing"), v.literal("completed"), v.literal("failed")),
       data: v.optional(v.any()),

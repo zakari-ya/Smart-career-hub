@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import { mutation, query, internalMutation, internalQuery } from "./_generated/server";
 import { internal } from "./_generated/api";
+import { getAuthenticatedIdentity, getAuthUserId } from "./lib/auth";
 import { generateHash } from "./lib/hash";
 
 /**
@@ -12,17 +13,17 @@ export const initPipeline = mutation({
     resumeId: v.id("resumes"),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Unauthorized");
+    const identity = await getAuthenticatedIdentity(ctx);
+    const authUserId = getAuthUserId(identity);
 
     const resume = await ctx.db.get(args.resumeId);
-    if (!resume || resume.clerkId !== identity.subject) {
+    if (!resume || resume.authUserId !== authUserId) {
       throw new Error("Resume not found or access denied");
     }
 
     const user = await ctx.db
       .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
+      .withIndex("by_auth_user_id", (q) => q.eq("authUserId", authUserId))
       .unique();
 
     if (!user) throw new Error("User not found");
@@ -52,7 +53,7 @@ export const initPipeline = mutation({
     const pipelineId = await ctx.db.insert("analysisPipeline", {
       resumeId: args.resumeId,
       userId: user._id,
-      clerkId: identity.subject,
+      authUserId,
       phase1: { status: "pending" },
       phase2: { status: "pending" },
       phase3: { status: "pending" },
@@ -140,9 +141,10 @@ export const getPipeline = query({
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) return null;
+    const authUserId = getAuthUserId(identity);
 
     const pipeline = await ctx.db.get(args.pipelineId);
-    if (!pipeline || pipeline.clerkId !== identity.subject) {
+    if (!pipeline || pipeline.authUserId !== authUserId) {
       return null;
     }
 
@@ -162,6 +164,12 @@ export const getPipelineByResume = query({
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) return null;
+    const authUserId = getAuthUserId(identity);
+    const resume = await ctx.db.get(args.resumeId);
+
+    if (!resume || resume.authUserId !== authUserId) {
+      return null;
+    }
 
     return await ctx.db
       .query("analysisPipeline")

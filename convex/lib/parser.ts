@@ -1,7 +1,6 @@
 "use node";
 
 import pdf from "pdf-parse/lib/pdf-parse.js";
-import mammoth from "mammoth";
 
 /**
  * Extracts text from a PDF buffer.
@@ -18,20 +17,6 @@ export async function extractTextFromPdf(buffer: Buffer): Promise<string> {
 }
 
 /**
- * Extracts text from a DOCX buffer using mammoth.
- * Mammoth focuses on semantic structure, which is better for AI.
- */
-export async function extractTextFromDocx(buffer: Buffer): Promise<string> {
-  try {
-    const result = await mammoth.extractRawText({ buffer });
-    return result.value;
-  } catch (error) {
-    console.error("DOCX extraction error:", error);
-    throw new Error("Failed to extract text from Word document");
-  }
-}
-
-/**
  * Validates the quality and relevance of extracted text.
  * Prevents hallucinations by ensuring the text is readable and structural.
  */
@@ -40,7 +25,7 @@ export function validateExtraction(extractedText: string): { valid: boolean; err
   if (!extractedText || extractedText.trim().length < 50) {
     return { 
       valid: false, 
-      error: "Could not extract text from this file. The PDF may be image-based (scanned) or corrupted. Please upload a text-based PDF or a .docx file." 
+      error: "Could not extract text from this file. The PDF may be image-based (scanned) or corrupted. Please upload a text-based PDF, Markdown, or TXT file." 
     };
   }
   
@@ -50,7 +35,7 @@ export function validateExtraction(extractedText: string): { valid: boolean; err
   if (printableRatio < 0.7) {
     return { 
       valid: false, 
-      error: "The extracted text appears corrupted or unreadable. Please try uploading a .docx or .txt file instead." 
+      error: "The extracted text appears corrupted or unreadable. Please try uploading a .txt or .md file instead." 
     };
   }
   
@@ -61,7 +46,7 @@ export function validateExtraction(extractedText: string): { valid: boolean; err
   if (!hasResumeStructure) {
     return { 
       valid: false, 
-      error: "This file doesn't appear to contain a resume. Please upload a valid resume in PDF, Word, or text format." 
+      error: "This file doesn't appear to contain a resume. Please upload a valid resume in PDF, Markdown, or text format." 
     };
   }
   
@@ -77,14 +62,6 @@ export async function extractText(
 ): Promise<string> {
   if (mimeType === "application/pdf") {
     return await extractTextFromPdf(buffer);
-  }
-
-  if (
-    mimeType ===
-      "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
-    mimeType === "application/msword"
-  ) {
-    return await extractTextFromDocx(buffer);
   }
 
   // Fallback for text-based files

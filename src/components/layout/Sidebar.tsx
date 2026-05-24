@@ -7,8 +7,8 @@ import {
   Settings, 
   User
 } from "lucide-react";
-import { useAuth, UserButton } from "@clerk/clerk-react";
 import { cn } from "../../lib/utils";
+import { useAppAuth } from "../../hooks/useAppAuth";
 
 const NAV_ITEMS = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
@@ -20,7 +20,7 @@ const NAV_ITEMS = [
 
 export function Sidebar() {
   const location = useLocation();
-  const { isSignedIn } = useAuth();
+  const { isSignedIn } = useAppAuth();
 
   return (
     <aside className="fixed left-0 top-0 z-40 h-screen w-60 bg-background border-r border-border/30 hidden lg:flex flex-col">
@@ -72,10 +72,10 @@ export function Sidebar() {
         <div className="mt-auto pt-8 flex flex-col gap-6">
           <div className="p-4 rounded-card bg-surface border border-border/30">
             <p className="text-[10px] font-bold uppercase tracking-widest text-muted mb-2">
-              Current Plan
+              Account Status
             </p>
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-primary">Pro Member</span>
+              <span className="text-xs font-semibold text-primary">Standard access</span>
               <div className="h-1.5 w-1.5 rounded-full bg-success animate-pulse" />
             </div>
           </div>
@@ -83,22 +83,12 @@ export function Sidebar() {
           <div className="flex items-center gap-4 px-2">
             {isSignedIn ? (
               <>
-                <UserButton 
-                  afterSignOutUrl="/"
-                  appearance={{
-                    elements: {
-                      userButtonAvatarBox: "h-8 w-8 rounded-sm border border-border/50 shadow-none"
-                    }
-                  }}
-                />
+                <div className="flex h-8 w-8 items-center justify-center rounded-sm border border-border/50 bg-surface">
+                  <User className="h-4 w-4 text-muted" />
+                </div>
                 <div className="flex flex-col">
                   <span className="text-[11px] font-bold text-primary uppercase tracking-wider">Account</span>
-                  <button 
-                    onClick={() => {}} 
-                    className="text-[10px] text-muted hover:text-accent transition-colors text-left font-medium"
-                  >
-                    View profile
-                  </button>
+                  <span className="text-[10px] text-muted font-medium">Protected session</span>
                 </div>
               </>
             ) : (

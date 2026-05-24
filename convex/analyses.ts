@@ -5,16 +5,17 @@ import {
   query,
 } from "./_generated/server";
 import { v } from "convex/values";
+import { getAuthenticatedIdentity, getAuthUserId } from "./lib/auth";
 
 export const getMyAnalyses = query({
   args: {},
   handler: async (ctx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Unauthorized");
+    const identity = await getAuthenticatedIdentity(ctx);
+    const authUserId = getAuthUserId(identity);
 
     return ctx.db
       .query("analyses")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
+      .withIndex("by_auth_user_id", (q) => q.eq("authUserId", authUserId))
       .collect();
   },
 });
@@ -48,18 +49,18 @@ export const createAnalysisRecord = mutation({
     ),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Unauthorized");
+    const identity = await getAuthenticatedIdentity(ctx);
+    const authUserId = getAuthUserId(identity);
 
     const user = await ctx.db
       .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
+      .withIndex("by_auth_user_id", (q) => q.eq("authUserId", authUserId))
       .first();
     if (!user) throw new Error("User not found");
 
     const analysisId = await ctx.db.insert("analyses", {
       userId: user._id,
-      clerkId: identity.subject,
+      authUserId,
       ...(args.resumeId !== undefined ? { resumeId: args.resumeId } : {}),
       ...(args.jobDescription !== undefined
         ? { jobDescription: args.jobDescription }
@@ -74,7 +75,7 @@ export const createAnalysisRecord = mutation({
     });
 
     await ctx.db.insert("auditLogs", {
-      userId: identity.subject,
+      userId: authUserId,
       action: "analysis_created",
       resourceId: analysisId,
       timestamp: Date.now(),

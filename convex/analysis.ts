@@ -3,8 +3,10 @@
 import { v } from "convex/values";
 import { action } from "./_generated/server";
 import { internal } from "./_generated/api";
+import { getAuthenticatedIdentity, getAuthUserId } from "./lib/auth";
 import { callOpenRouter } from "./lib/openrouter";
 import { createHash } from "crypto";
+import { normalizeStoredAnalysisResult } from "./lib/validators";
 
 /**
  * PHASE 2: Background AI Analysis
@@ -26,8 +28,8 @@ export const analyzeResume = action({
     cached?: boolean;
     error?: string;
   }> => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Unauthorized");
+    const identity = await getAuthenticatedIdentity(ctx);
+    const authUserId = getAuthUserId(identity);
 
     // 1. TRUNCATION: Keep input within reasonable limits to save tokens and improve speed
     const truncatedResume = args.extractedText.slice(0, 8000);
@@ -57,7 +59,7 @@ export const analyzeResume = action({
     const rateLimitRes = await ctx.runMutation(
       internal.lib.rateLimiter.consumeRateLimit,
       {
-        userId: identity.subject,
+        userId: authUserId,
         resource: "analysis",
         maxCount: 10,
         windowMs: 3600000,
@@ -139,18 +141,22 @@ OUTPUT JSON FORMAT:
       }
 
       // Call OpenRouter with optimized params (temp 0.2, json_object)
-      const analysis = await callOpenRouter(systemPrompt, userPrompt);
+      const rawAnalysis = await callOpenRouter(systemPrompt, userPrompt);
+      const normalizedAnalysis = normalizeStoredAnalysisResult(
+        args.analysisType === "resume" ? "resume_review" : "job_match",
+        rawAnalysis,
+      );
 
       // Save to cache
       await ctx.runMutation(internal.analyses.setCachedResult, {
         contentHash,
-        result: analysis,
+        result: normalizedAnalysis,
         type: args.analysisType,
       });
 
       return {
         success: true,
-        analysis,
+        analysis: normalizedAnalysis,
       };
     } catch (err) {
       console.error("[Analysis Action Error]:", err);

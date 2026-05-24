@@ -11,14 +11,15 @@ import {
   TrendingUp,
 } from "lucide-react";
 import { Link } from "react-router-dom";
-import { useUser } from "@clerk/clerk-react";
 import { StatCard } from "../components/animations/StatCard";
 import { StaggerContainer } from "../components/animations/StaggerContainer";
 import { AnimatedCard } from "../components/animations/AnimatedCard";
+import { useAppAuth } from "../hooks/useAppAuth";
 
 export function Dashboard() {
   const resumes = useQuery(api.resumes.getMyResumes);
-  const { user } = useUser();
+  const { user } = useAppAuth();
+  const firstName = user?.name?.trim().split(/\s+/)[0];
 
   const resumeCount = resumes?.length ?? 0;
 
@@ -33,7 +34,7 @@ export function Dashboard() {
       <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between border-b border-border pb-10">
         <div>
           <h1 className="text-[28px] font-semibold text-primary tracking-tight leading-tight">
-            {user?.firstName ? `Hey, ${user.firstName}.` : "Dashboard"}
+            {firstName ? `Hey, ${firstName}.` : "Dashboard"}
           </h1>
           <p className="mt-2 text-[16px] text-secondary font-normal">
             Your career intelligence at a glance.

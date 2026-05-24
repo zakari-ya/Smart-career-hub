@@ -4,6 +4,11 @@ import { api } from "../../convex/_generated/api";
 import { db } from '../lib/db';
 import { toast } from "sonner";
 import { useLiveQuery } from 'dexie-react-hooks';
+import {
+  MAX_RESUME_FILE_SIZE_BYTES,
+  isAllowedResumeFileType,
+  type ResumeFileType,
+} from "../../shared/uploadPolicy";
 
 export function useOfflineQueue() {
   const [isOnline, setIsOnline] = useState(navigator.onLine);
@@ -39,9 +44,16 @@ export function useOfflineQueue() {
   // Add a new file to the offline queue
   const addToQueue = async (file: File) => {
     try {
-      let fileType: "pdf" | "txt" | "md" = "txt";
-      if (file.type === "application/pdf") fileType = "pdf";
-      else if (file.name.endsWith(".md")) fileType = "md";
+      const extension = file.name.split(".").pop()?.toLowerCase();
+      if (!extension || !isAllowedResumeFileType(extension)) {
+        throw new Error("Unsupported file type.");
+      }
+
+      if (file.size > MAX_RESUME_FILE_SIZE_BYTES) {
+        throw new Error("File size exceeds the 5MB limit.");
+      }
+
+      const fileType = extension as ResumeFileType;
 
       await db.offlineUploads.add({
         fileData: file,

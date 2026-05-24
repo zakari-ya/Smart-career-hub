@@ -26,6 +26,6 @@
     "exactOptionalPropertyTypes": true,
     "types": ["vite/client"]
   },
-  "include": ["src", "convex", "tests"],
+  "include": ["src", "convex", "tests", "shared"],
   "references": [{ "path": "./tsconfig.node.json" }]
 }

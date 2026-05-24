@@ -97,7 +97,7 @@ export function PortfolioAuditor() {
       setAnalysis({
         _id: analysisId as unknown as string,
         userId: "temp" as unknown as Id<"users">,
-        clerkId: "",
+        authUserId: "",
         type: "portfolio_audit",
         aiModel: "google/gemini-2.5-flash-preview",
         status: "completed",

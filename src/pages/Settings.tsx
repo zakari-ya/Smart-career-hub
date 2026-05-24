@@ -1,7 +1,9 @@
-import { useUser, useClerk } from "@clerk/clerk-react";
+import { useMutation } from "convex/react";
 import { Download, AlertTriangle, ShieldAlert, User, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import { useState } from "react";
+import { api } from "../../convex/_generated/api";
+import { useAppAuth } from "../hooks/useAppAuth";
 
 type Tab = "profile" | "data" | "danger";
 
@@ -37,22 +39,13 @@ function TabButton({ id, label, active, onClick }: TabButtonProps) {
 }
 
 export function Settings() {
-  const { user } = useUser();
-  const { signOut } = useClerk();
+  const { user, signOut } = useAppAuth();
   const [activeTab, setActiveTab] = useState<Tab>("profile");
   const [isDeleting, setIsDeleting] = useState(false);
-  const [isExporting, setIsExporting] = useState(false);
-
-  const handleExport = async () => {
-    setIsExporting(true);
-    try {
-      toast.success("Data export started. You'll receive an email when it's ready.");
-    } catch {
-      toast.error("Failed to request data export.");
-    } finally {
-      setIsExporting(false);
-    }
-  };
+  const deleteAccount = useMutation(api.compliance.deleteUserAccount);
+  const displayName = user?.name ?? "User";
+  const email = user?.email ?? "No email on file";
+  const image = user?.image ?? null;
 
   const handleDelete = async () => {
     if (
@@ -64,9 +57,14 @@ export function Settings() {
     }
     setIsDeleting(true);
     try {
+      await deleteAccount({});
       toast.success("Account deleted successfully.");
+      await signOut().catch(() => {
+        window.location.assign("/");
+      });
     } catch {
       toast.error("Failed to delete account.");
+    } finally {
       setIsDeleting(false);
     }
   };
@@ -113,10 +111,10 @@ export function Settings() {
         {activeTab === "profile" && (
           <div className="flex flex-col gap-10">
             <div className="flex items-center justify-between p-8 rounded-card border border-border/30 bg-surface">
-              <div className="flex items-center gap-6">
+                <div className="flex items-center gap-6">
                 <div className="h-20 w-20 rounded-full border-2 border-background overflow-hidden bg-background">
-                  {user?.imageUrl ? (
-                    <img src={user.imageUrl} className="h-full w-full object-cover" />
+                  {image ? (
+                    <img src={image} alt={displayName} className="h-full w-full object-cover" />
                   ) : (
                     <div className="flex h-full w-full items-center justify-center text-muted">
                       <User className="h-8 w-8" />
@@ -124,13 +122,10 @@ export function Settings() {
                   )}
                 </div>
                 <div className="flex flex-col gap-1">
-                  <h3 className="text-xl font-semibold text-primary">{user?.fullName ?? "User"}</h3>
-                  <p className="text-sm text-secondary font-medium">{user?.primaryEmailAddress?.emailAddress}</p>
+                  <h3 className="text-xl font-semibold text-primary">{displayName}</h3>
+                  <p className="text-sm text-secondary font-medium">{email}</p>
                 </div>
               </div>
-              <button className="text-xs font-bold uppercase tracking-widest text-accent hover:underline">
-                Update Profile
-              </button>
             </div>
 
             <div className="flex flex-col gap-6">
@@ -159,22 +154,21 @@ export function Settings() {
                 <h3 className="text-sm font-bold uppercase tracking-widest text-accent">Privacy Standards</h3>
               </div>
               <p className="text-sm text-accent/80 leading-relaxed font-medium">
-                We adhere to strict data portability standards. You can request a complete archive of your career intelligence data at any time. Resumes are processed using localized AI models when available.
+                Your data stays attached to your authenticated account, and destructive actions run through secured backend mutations. Export tools are not enabled yet in this release.
               </p>
             </div>
 
             <div className="p-8 rounded-card border border-border/30">
               <h3 className="text-lg font-semibold text-primary mb-2">Export Personal Archive</h3>
               <p className="text-sm text-secondary mb-8 max-w-lg leading-relaxed">
-                Receive a compressed JSON package containing your resumes, portfolio audits, job match history, and metadata.
+                Data export is planned, but it is not available until a secure backend export flow is implemented.
               </p>
               <button
-                onClick={() => void handleExport()}
-                disabled={isExporting}
-                className="flex items-center gap-2 h-11 px-8 rounded-full bg-accent text-white font-medium text-sm transition-all hover:bg-accent/90 disabled:opacity-30"
+                disabled={true}
+                className="flex items-center gap-2 h-11 px-8 rounded-full bg-accent text-white font-medium text-sm transition-all disabled:opacity-30"
               >
                 <Download className="h-4 w-4" />
-                {isExporting ? "Preparing Archive..." : "Request Data Export"}
+                Export Coming Soon
               </button>
             </div>
           </div>

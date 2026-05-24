@@ -9,6 +9,11 @@ import {
 import { cn } from "../../lib/utils";
 import { toast } from "sonner";
 import { useOfflineQueue } from "../../hooks/useOfflineQueue";
+import {
+  ALLOWED_RESUME_FILE_TYPES,
+  MAX_RESUME_FILE_SIZE_BYTES,
+  isAllowedResumeFileType,
+} from "../../../shared/uploadPolicy";
 
 export function ResumeUploader() {
   const [isDragging, setIsDragging] = useState(false);
@@ -27,17 +32,16 @@ export function ResumeUploader() {
   }, []);
 
   const validateFile = (selectedFile: File) => {
-    if (selectedFile.size > 10 * 1024 * 1024) {
-      const msg = "File size exceeds 10MB limit";
+    if (selectedFile.size > MAX_RESUME_FILE_SIZE_BYTES) {
+      const msg = "File size exceeds the 5MB limit";
       toast.error(msg);
       return false;
     }
     
-    const validExtensions = ['pdf', 'txt', 'md', 'docx'];
     const extension = selectedFile.name.split('.').pop()?.toLowerCase();
     
-    if (!validExtensions.includes(extension || "")) {
-      const msg = "Unsupported file type. Use PDF, DOCX, TXT, or MD.";
+    if (!extension || !isAllowedResumeFileType(extension)) {
+      const msg = `Unsupported file type. Use ${ALLOWED_RESUME_FILE_TYPES.map((type) => type.toUpperCase()).join(", ")}.`;
       toast.error(msg);
       return false;
     }
@@ -101,7 +105,7 @@ export function ResumeUploader() {
       >
         <input
           type="file"
-          accept=".pdf,.txt,.md,.docx"
+          accept=".pdf,.txt,.md"
           className="absolute inset-0 z-10 h-full w-full cursor-pointer opacity-0"
           onChange={onFileChange}
           disabled={isSyncing}
@@ -144,7 +148,7 @@ export function ResumeUploader() {
                 {isDragging ? "Drop to upload" : "Select or drag resume"}
               </p>
               <p className="text-xs text-secondary font-normal">
-                PDF, DOCX, TXT or MD up to 10MB
+                PDF, TXT, or MD up to 5MB
               </p>
             </div>
           </div>

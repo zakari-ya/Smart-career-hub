@@ -3,7 +3,7 @@ import { Id } from "../../convex/_generated/dataModel";
 export interface Resume {
   _id: Id<"resumes">;
   userId: Id<"users">;
-  clerkId: string;
+  authUserId: string;
   title: string;
   fileStorageId?: Id<"_storage">;
   extractedText?: string;
@@ -17,7 +17,7 @@ export interface Resume {
 export interface Analysis {
   _id: Id<"analyses">;
   userId: Id<"users">;
-  clerkId: string;
+  authUserId: string;
   resumeId?: Id<"resumes">;
   portfolioUrl?: string;
   jobDescription?: string;
@@ -41,7 +41,7 @@ export interface Analysis {
 export interface JobTracker {
   _id: Id<"jobTrackers">;
   userId: Id<"users">;
-  clerkId: string;
+  authUserId: string;
   company: string;
   role: string;
   jobUrl?: string;

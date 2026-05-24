@@ -43,7 +43,7 @@ export function ResumeScanner() {
   const resumes = useQuery(api.resumes.getMyResumes);
   const extractTextAction = useAction(api.extraction.extractText);
   const { pipeline, startPipeline, isInitializing } = useAnalyzePipeline(
-    selectedResumeId as Id<"resumes">
+    selectedResumeId as Id<"resumes">,
   );
 
   const handleExtract = async () => {
@@ -79,7 +79,9 @@ export function ResumeScanner() {
         toast.error(result.error ?? "Extraction failed");
       }
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "An unexpected error occurred");
+      setError(
+        err instanceof Error ? err.message : "An unexpected error occurred",
+      );
       setPhase("idle");
     }
   };
@@ -130,7 +132,10 @@ export function ResumeScanner() {
         {!resumes ? (
           <div className="space-y-3">
             {[1, 2, 3].map((n) => (
-              <div key={n} className="h-14 w-full rounded-lg bg-surface animate-pulse" />
+              <div
+                key={n}
+                className="h-14 w-full rounded-lg bg-surface animate-pulse"
+              />
             ))}
           </div>
         ) : resumes.length === 0 ? (
@@ -148,7 +153,7 @@ export function ResumeScanner() {
                   "group flex items-center justify-between rounded-lg border p-4 text-left transition-all",
                   selectedResumeId === resume._id
                     ? "border-primary bg-primary/5"
-                    : "border-border bg-transparent hover:bg-surface"
+                    : "border-border bg-transparent hover:bg-surface",
                 )}
               >
                 <div className="flex items-center gap-3">
@@ -157,13 +162,15 @@ export function ResumeScanner() {
                       "flex h-9 w-9 items-center justify-center rounded-md border transition-colors",
                       selectedResumeId === resume._id
                         ? "bg-primary text-background border-transparent"
-                        : "bg-surface text-muted border-border"
+                        : "bg-surface text-muted border-border",
                     )}
                   >
                     <FileText className="h-4 w-4" strokeWidth={1.5} />
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-primary">{resume.title}</p>
+                    <p className="text-sm font-medium text-primary">
+                      {resume.title}
+                    </p>
                     <p className="text-xs text-secondary mt-0.5">
                       {resume.fileType.toUpperCase()} ·{" "}
                       {new Date(resume._creationTime).toLocaleDateString()}
@@ -175,7 +182,7 @@ export function ResumeScanner() {
                     "h-4 w-4 transition-transform",
                     selectedResumeId === resume._id
                       ? "text-primary translate-x-0.5"
-                      : "text-border"
+                      : "text-border",
                   )}
                 />
               </button>
@@ -212,7 +219,10 @@ export function ResumeScanner() {
         <div className="flex flex-col items-center justify-center gap-6 py-24 text-center">
           <div className="relative">
             <div className="h-20 w-20 rounded-full border border-border bg-surface flex items-center justify-center">
-              <Loader2 className="h-9 w-9 animate-spin text-primary" strokeWidth={1} />
+              <Loader2
+                className="h-9 w-9 animate-spin text-primary"
+                strokeWidth={1}
+              />
             </div>
             <Sparkles
               className="absolute -top-2 -right-2 h-7 w-7 text-amber-500 animate-pulse"
@@ -224,7 +234,8 @@ export function ResumeScanner() {
               Parsing document…
             </h2>
             <p className="mt-2 text-secondary text-sm font-normal max-w-sm mx-auto">
-              We're extracting text from your resume using deep document parsing.
+              We're extracting text from your resume using deep document
+              parsing.
             </p>
           </div>
         </div>
@@ -234,7 +245,9 @@ export function ResumeScanner() {
           {/* Text preview */}
           <div className="lg:col-span-7 flex flex-col gap-4">
             <div className="flex items-center justify-between">
-              <h2 className="text-base font-semibold text-primary">Extracted Content</h2>
+              <h2 className="text-base font-semibold text-primary">
+                Extracted Content
+              </h2>
               <span className="px-2.5 py-0.5 rounded-full bg-success/10 text-[10px] font-bold text-success uppercase tracking-wider border border-success/20">
                 Verified
               </span>
@@ -257,16 +270,21 @@ export function ResumeScanner() {
                 verification, scoring, and a deep semantic audit.
               </p>
               <div className="space-y-2.5">
-                {["Structural integrity check", "Keyword & Scoring Scan", "Deep Semantic Audit"].map(
-                  (step, i) => (
-                    <div key={step} className="flex items-center gap-3 text-xs font-mono text-muted">
-                      <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[10px] font-bold text-primary">
-                        {i + 1}
-                      </span>
-                      {step}
-                    </div>
-                  )
-                )}
+                {[
+                  "Structural integrity check",
+                  "Keyword & Scoring Scan",
+                  "Deep Semantic Audit",
+                ].map((step, i) => (
+                  <div
+                    key={step}
+                    className="flex items-center gap-3 text-xs font-mono text-muted"
+                  >
+                    <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[10px] font-bold text-primary">
+                      {i + 1}
+                    </span>
+                    {step}
+                  </div>
+                ))}
               </div>
               <button
                 onClick={() => void handleAnalyze()}
@@ -298,7 +316,9 @@ export function ResumeScanner() {
   const stepResults = (
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-base font-semibold text-primary">Analysis Pipeline</h2>
+        <h2 className="text-base font-semibold text-primary">
+          Analysis Pipeline
+        </h2>
         <button
           onClick={handleReset}
           className="flex items-center gap-1.5 text-sm font-medium text-muted hover:text-primary transition-colors"

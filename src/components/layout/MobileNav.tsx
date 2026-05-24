@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Menu, X } from "lucide-react";
-import { useAuth, UserButton } from "@clerk/clerk-react";
 import { cn } from "../../lib/utils";
+import { useAppAuth } from "../../hooks/useAppAuth";
 
 const NAV_ITEMS = [
   { name: "Dashboard", href: "/dashboard" },
@@ -15,7 +15,7 @@ const NAV_ITEMS = [
 export function MobileNav() {
   const [isOpen, setIsOpen] = useState(false);
   const location = useLocation();
-  const { isSignedIn } = useAuth();
+  const { isSignedIn } = useAppAuth();
 
   return (
     <header className="lg:hidden fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-md border-b border-border/30 px-6 h-16 flex items-center justify-between">
@@ -52,8 +52,7 @@ export function MobileNav() {
           <div className="pt-6 border-t border-border/30 flex items-center justify-between">
             {isSignedIn ? (
               <div className="flex items-center gap-3">
-                <UserButton afterSignOutUrl="/" />
-                <span className="text-xs font-bold uppercase tracking-widest text-muted">Account</span>
+                <span className="text-xs font-bold uppercase tracking-widest text-muted">Authenticated</span>
               </div>
             ) : (
               <Link 

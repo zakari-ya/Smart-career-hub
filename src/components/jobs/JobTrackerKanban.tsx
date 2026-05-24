@@ -1,5 +1,5 @@
-import { useState } from "react";
-
+import { useQuery } from "convex/react";
+import { api } from "../../../convex/_generated/api";
 import { JobCard } from "./JobCard";
 import { Plus } from "lucide-react";
 import { Button } from "../ui/button";
@@ -15,11 +15,8 @@ const COLUMNS = [
 ] as const;
 
 export function JobTrackerKanban() {
-  // Assume we have getMyJobs query in convex/jobs.ts
-  // const jobs = useQuery(api.jobs.getMyJobs) || [];
-  const jobs: import("../../types").JobTracker[] = []; // Placeholder until backend is implemented
-  
-  const [boardJobs] = useState(jobs);
+  const jobs = useQuery(api.jobs.getMyJobs) ?? [];
+  const boardJobs = jobs;
 
   // Group jobs by status
   const jobsByStatus = COLUMNS.reduce((acc, col) => {

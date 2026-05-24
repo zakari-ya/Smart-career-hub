@@ -1,11 +1,10 @@
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
-import { useUser, useClerk } from "@clerk/clerk-react";
 import { Link } from "react-router-dom";
 import { LayoutGrid, LogOut, User } from "lucide-react";
+import { useAppAuth } from "../../hooks/useAppAuth";
 
 export function AvatarDropdown() {
-  const { user } = useUser();
-  const { signOut } = useClerk();
+  const { user, signOut } = useAppAuth();
 
   if (!user) return null;
 
@@ -13,8 +12,8 @@ export function AvatarDropdown() {
     <DropdownMenu.Root>
       <DropdownMenu.Trigger asChild>
         <button className="flex h-8 w-8 items-center justify-center rounded-full border border-border bg-surface overflow-hidden outline-none hover:opacity-80 transition-opacity">
-          {user.imageUrl ? (
-            <img src={user.imageUrl} alt={user.fullName || "User"} className="h-full w-full object-cover" />
+          {user.image ? (
+            <img src={user.image} alt={user.name || "User"} className="h-full w-full object-cover" />
           ) : (
             <User className="h-4 w-4 text-muted" />
           )}
@@ -40,7 +39,7 @@ export function AvatarDropdown() {
           <DropdownMenu.Separator className="my-1 h-px bg-border/30" />
           
           <DropdownMenu.Item
-            onClick={() => signOut({ redirectUrl: "/" })}
+            onClick={() => void signOut()}
             className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-error hover:bg-error/5 outline-none cursor-pointer"
           >
             <LogOut className="h-4 w-4" />
