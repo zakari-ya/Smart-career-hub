@@ -180,7 +180,7 @@ The frontend is configured for **Vercel**, while the backend and auth routes are
 3. Add `VITE_CONVEX_URL` and `CONVEX_SITE_URL` to Vercel Environment Variables.
 4. The repo includes `vercel.json` for SPA deep-link rewrites and `api/auth/[...path].ts` to proxy Better Auth routes through the app domain.
 5. In Convex, configure the production environment variables listed above and run `npx convex deploy`.
-6. Social login is intended for localhost and the production domain. Preview deployments on `*.vercel.app` should use email/password sign-in.
+6. Social login is intended for any hostname you explicitly add to your Google and GitHub OAuth callback settings, including your Vercel production domain.
 
 ---
 *Built with precision, security, and aesthetics in mind.*

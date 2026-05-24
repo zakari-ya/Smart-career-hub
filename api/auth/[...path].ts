@@ -23,6 +23,14 @@ function readBody(req: IncomingMessage): Promise<Buffer | undefined> {
   });
 }
 
+function getHeaderValue(value: string | string[] | undefined): string | undefined {
+  if (Array.isArray(value)) {
+    return value[0];
+  }
+
+  return value;
+}
+
 function copyResponseHeaders(
   response: Response,
   res: ServerResponse,
@@ -63,9 +71,8 @@ export default async function handler(
       ? [req.query.path]
       : [];
   const requestPath = pathSegments.join("/");
-  const search = req.url?.includes("?")
-    ? req.url.slice(req.url.indexOf("?"))
-    : "";
+  const requestUrl = new URL(req.url ?? "/", "https://vercel.local");
+  const search = requestUrl.search;
   const targetUrl = `${convexSiteUrl.replace(/\/$/, "")}/api/auth/${requestPath}${search}`;
   const headers = new Headers();
 
@@ -88,23 +95,22 @@ export default async function handler(
 
   headers.set(
     "x-better-auth-forwarded-host",
-    (req.headers["x-forwarded-host"] as string | undefined) ??
+    getHeaderValue(req.headers["x-forwarded-host"]) ??
       req.headers.host ??
       "",
   );
   headers.set(
     "x-better-auth-forwarded-proto",
-    (req.headers["x-forwarded-proto"] as string | undefined) ?? "https",
+    getHeaderValue(req.headers["x-forwarded-proto"]) ?? "https",
   );
 
   const method = req.method ?? "GET";
   const body =
     method === "GET" || method === "HEAD" ? undefined : await readBody(req);
-
   const response = await fetch(targetUrl, {
     method,
     headers,
-    body,
+    ...(body ? { body } : {}),
     redirect: "manual",
   });
 

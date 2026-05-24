@@ -5,21 +5,12 @@ import { toast } from "sonner";
 import { authClient } from "../lib/auth-client";
 import { useAppAuth } from "../hooks/useAppAuth";
 
-function isPreviewSocialDisabled() {
-  if (typeof window === "undefined") {
-    return false;
-  }
-
-  return window.location.hostname.endsWith(".vercel.app");
-}
-
 export function SignIn() {
   const navigate = useNavigate();
   const { isLoaded, isSignedIn } = useAppAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const previewSocialDisabled = isPreviewSocialDisabled();
 
   if (isLoaded && isSignedIn) {
     return <Navigate to="/dashboard" replace />;
@@ -133,29 +124,21 @@ export function SignIn() {
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <button
             type="button"
-            disabled={previewSocialDisabled}
             onClick={() => void handleSocialSignIn("google")}
-            className="flex h-11 items-center justify-center gap-2 rounded-full border border-border bg-background text-sm font-medium text-primary transition-colors hover:bg-surface disabled:cursor-not-allowed disabled:opacity-40"
+            className="flex h-11 items-center justify-center gap-2 rounded-full border border-border bg-background text-sm font-medium text-primary transition-colors hover:bg-surface"
           >
             <Mail className="h-4 w-4" />
             Google
           </button>
           <button
             type="button"
-            disabled={previewSocialDisabled}
             onClick={() => void handleSocialSignIn("github")}
-            className="flex h-11 items-center justify-center gap-2 rounded-full border border-border bg-background text-sm font-medium text-primary transition-colors hover:bg-surface disabled:cursor-not-allowed disabled:opacity-40"
+            className="flex h-11 items-center justify-center gap-2 rounded-full border border-border bg-background text-sm font-medium text-primary transition-colors hover:bg-surface"
           >
             <Github className="h-4 w-4" />
             GitHub
           </button>
         </div>
-
-        {previewSocialDisabled && (
-          <p className="mt-4 text-xs text-secondary">
-            Social sign-in is disabled on preview hosts. Use email and password on Vercel previews.
-          </p>
-        )}
 
         <p className="mt-6 text-sm text-secondary">
           New here?{" "}
