@@ -59,6 +59,15 @@ export default defineConfig(function (_a) {
                         target: env.VITE_CONVEX_SITE_URL,
                         changeOrigin: true,
                         secure: true,
+                        configure: function (proxy) {
+                            proxy.on("proxyReq", function (proxyReq, req) {
+                                var forwardedHost = req.headers.host;
+                                if (forwardedHost) {
+                                    proxyReq.setHeader("x-better-auth-forwarded-host", forwardedHost);
+                                }
+                                proxyReq.setHeader("x-better-auth-forwarded-proto", "http");
+                            });
+                        },
                     },
                 },
             }
