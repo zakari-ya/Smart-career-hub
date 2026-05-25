@@ -31,6 +31,33 @@ function getHeaderValue(value: string | string[] | undefined): string | undefine
   return value;
 }
 
+function getAuthPathFromQuery(path: string[] | string | undefined): string | null {
+  if (Array.isArray(path)) {
+    return path.filter((part) => part.length > 0).join("/");
+  }
+
+  if (typeof path === "string" && path.length > 0) {
+    return path;
+  }
+
+  return null;
+}
+
+function getAuthPathFromUrl(url: string | undefined): {
+  path: string;
+  search: string;
+} {
+  const requestUrl = new URL(url ?? "/", "https://vercel.local");
+  const path = requestUrl.pathname
+    .replace(/^\/api\/auth\/?/, "")
+    .replace(/^\/+|\/+$/g, "");
+
+  return {
+    path,
+    search: requestUrl.search,
+  };
+}
+
 function copyResponseHeaders(
   response: Response,
   res: ServerResponse,
@@ -65,15 +92,42 @@ export default async function handler(
     return;
   }
 
-  const pathSegments = Array.isArray(req.query?.path)
-    ? req.query.path
-    : req.query?.path
-      ? [req.query.path]
-      : [];
-  const requestPath = pathSegments.join("/");
-  const requestUrl = new URL(req.url ?? "/", "https://vercel.local");
-  const search = requestUrl.search;
-  const targetUrl = `${convexSiteUrl.replace(/\/$/, "")}/api/auth/${requestPath}${search}`;
+  const parsedUrl = getAuthPathFromUrl(req.url);
+  const requestPath = (
+    getAuthPathFromQuery(req.query?.path) ?? parsedUrl.path
+  ).replace(/^\/+|\/+$/g, "");
+  const search = parsedUrl.search;
+  const authPath = requestPath.length > 0 ? `/${requestPath}` : "";
+  const targetBaseUrl = `${convexSiteUrl.replace(/\/$/, "")}/api/auth`;
+  const targetUrl = `${targetBaseUrl}${authPath}${search}`;
+  const forwardedHost =
+    getHeaderValue(req.headers["x-forwarded-host"]) ?? req.headers.host ?? "";
+  const forwardedProto =
+    getHeaderValue(req.headers["x-forwarded-proto"]) ?? "https";
+
+  if (requestPath === "__debug") {
+    res.statusCode = 200;
+    res.setHeader("content-type", "application/json; charset=utf-8");
+    res.setHeader("cache-control", "no-store");
+    res.end(
+      JSON.stringify(
+        {
+          configured: true,
+          incomingUrl: req.url ?? null,
+          queryPath: req.query?.path ?? null,
+          derivedAuthPath: requestPath,
+          convexAuthBaseUrl: targetBaseUrl,
+          sampleGetSessionTarget: `${targetBaseUrl}/get-session`,
+          forwardedHost,
+          forwardedProto,
+        },
+        null,
+        2,
+      ),
+    );
+    return;
+  }
+
   const headers = new Headers();
 
   for (const [key, value] of Object.entries(req.headers)) {
@@ -93,26 +147,27 @@ export default async function handler(
     headers.set(key, value);
   }
 
-  headers.set(
-    "x-better-auth-forwarded-host",
-    getHeaderValue(req.headers["x-forwarded-host"]) ??
-      req.headers.host ??
-      "",
-  );
-  headers.set(
-    "x-better-auth-forwarded-proto",
-    getHeaderValue(req.headers["x-forwarded-proto"]) ?? "https",
-  );
+  headers.set("x-better-auth-forwarded-host", forwardedHost);
+  headers.set("x-better-auth-forwarded-proto", forwardedProto);
 
   const method = req.method ?? "GET";
   const body =
     method === "GET" || method === "HEAD" ? undefined : await readBody(req);
-  const response = await fetch(targetUrl, {
-    method,
-    headers,
-    ...(body ? { body } : {}),
-    redirect: "manual",
-  });
+  let response: Response;
+
+  try {
+    response = await fetch(targetUrl, {
+      method,
+      headers,
+      ...(body !== undefined ? { body } : {}),
+      redirect: "manual",
+    });
+  } catch {
+    res.statusCode = 502;
+    res.setHeader("content-type", "text/plain; charset=utf-8");
+    res.end("Unable to reach Convex auth endpoint.");
+    return;
+  }
 
   res.statusCode = response.status;
   copyResponseHeaders(response, res);
